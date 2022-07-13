@@ -5,7 +5,7 @@
 # ![app icon](.github/readme-images/app-icon.png)Animiru
 Animiru is an unofficial fork of [Aniyomi](https://github.com/jmir1/aniyomi), which is yet another unofficial fork of the free and open source manga reader [Tachiyomi](https://github.com/tachiyomiorg/tachiyomi)
 
-Animiru strips the manga capabilities of Aniyomi, to make it an anime only app for Android 6.0+
+Animiru strips the manga capabilities of Aniyomi, to make it an anime only app for Android 6.0+ 
 
 
 ## Features
