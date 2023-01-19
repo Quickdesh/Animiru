@@ -85,8 +85,8 @@ class BrowseController :
 
     override fun configureTabs(tabs: TabLayout): Boolean {
         with(tabs) {
-            tabGravity = TabLayout.GRAVITY_FILL //AM
-            tabMode = TabLayout.MODE_FIXED //AM
+            tabGravity = TabLayout.GRAVITY_FILL // AM
+            tabMode = TabLayout.MODE_FIXED // AM
         }
         return true
     }

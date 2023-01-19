@@ -30,10 +30,7 @@ abstract class BaseEpisodeItem<T : BaseEpisodeHolder, H : AbstractHeaderItem<*>>
     val isDownloaded: Boolean
         get() = status == AnimeDownload.State.DOWNLOADED
 
-    val downloadedEpisodeFileSizeMb : Long? get(){
-        if(isDownloaded) return null;
-        return null
-    }
+    var downloadedEpisodeFileSizeMb: Long? = null
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

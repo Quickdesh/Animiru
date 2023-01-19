@@ -192,7 +192,7 @@ class PreferencesHelper(val context: Context) {
 
     fun downloadOnlyOverWifi() = prefs.getBoolean(Keys.downloadOnlyOverWifi, true)
 
-    fun showDownloadedEpisodeSize() = prefs.getBoolean(Keys.showDownloadedEpisodeSize, true) //AM
+    fun showDownloadedEpisodeSize() = prefs.getBoolean(Keys.showDownloadedEpisodeSize, true) // AM
 
     fun numberOfBackups() = flowPrefs.getInt("backup_slots", 2)
 

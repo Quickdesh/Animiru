@@ -10,6 +10,7 @@ import eu.kanade.domain.episode.model.Episode
 import eu.kanade.domain.episode.model.EpisodeUpdate
 import eu.kanade.tachiyomi.animesource.AnimeSourceManager
 import eu.kanade.tachiyomi.data.download.AnimeDownloadManager
+import eu.kanade.tachiyomi.data.download.AnimeDownloadProvider
 import eu.kanade.tachiyomi.data.download.model.AnimeDownload
 import eu.kanade.tachiyomi.data.preference.PreferencesHelper
 import eu.kanade.tachiyomi.ui.base.presenter.BasePresenter
@@ -125,6 +126,7 @@ class AnimeUpdatesPresenter : BasePresenter<AnimeUpdatesController>() {
                         }
                     }
                     setDownloadedEpisodes(list)
+                    setDownloadedEpisodeFileSize(list)
 
                     _updates.value = list
 
@@ -133,6 +135,36 @@ class AnimeUpdatesPresenter : BasePresenter<AnimeUpdatesController>() {
                 }
         }
     }
+
+    // AM -->
+    /**
+     * Finds and assigns the list of downloaded episodes file size.
+     *
+     * @param items the list of episode from the database.
+     */
+    private fun setDownloadedEpisodeFileSize(items: List<AnimeUpdatesItem>) {
+        if (!preferences.showDownloadedEpisodeSize()) return
+        val animeDownloadProvider = AnimeDownloadProvider(preferences.context)
+
+        for (item in items) {
+            if (!item.isDownloaded) continue
+            val downloadedEpisodeFileSize =
+                sourceManager.get(item.anime.source)?.let {
+                    animeDownloadProvider.getDownloadedEpisodeFileSizeBytes(
+                        item.episode.name,
+                        item.episode.scanlator,
+                        item.anime.title,
+                        it,
+                    )
+                }
+
+            item.downloadedEpisodeFileSizeMb = downloadedEpisodeFileSize?.let {
+                // Convert it from bytes to Megabytes
+                it / (1000 * 1000)
+            }
+        }
+    }
+    // AM <--
 
     /**
      * Finds and assigns the list of downloaded episodes.
@@ -225,7 +257,7 @@ class AnimeUpdatesPresenter : BasePresenter<AnimeUpdatesController>() {
     /**
      * Mark selected episodes as fillermarked
      * @param items list of selected episodes
-     * @param fillermarked fillermark status
+     * @param fillermark fillermark status
      */
     fun fillermarkEpisodes(items: List<AnimeUpdatesItem>, fillermark: Boolean) {
         presenterScope.launchIO {

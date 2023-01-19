@@ -46,5 +46,6 @@ class EpisodeDownloadView @JvmOverloads constructor(
         this.progress = progress
         this.downloadedEpisodeFileSizeMb = downloadedEpisodeFileSizeMb // AM
     }
-     *///AM
+     */
+    // AM
 }

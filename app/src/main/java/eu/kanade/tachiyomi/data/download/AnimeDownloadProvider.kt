@@ -167,13 +167,15 @@ class AnimeDownloadProvider(private val context: Context) {
      * @param animeSource the source of the anime
      */
     fun getDownloadedEpisodeFileSizeBytes(
-        episodeName: String, episodeScanlator: String?,
-        animeTitle: String, animeSource: AnimeSource,
+        episodeName: String,
+        episodeScanlator: String?,
+        animeTitle: String,
+        animeSource: AnimeSource,
     ): Long? {
         return findEpisodeDir(episodeName, episodeScanlator, animeTitle, animeSource)
-          ?.filePath?.let {
-            DiskUtil.getDirectorySize(File(it))
-        }
+            ?.filePath?.let {
+                DiskUtil.getDirectorySize(File(it))
+            }
     }
     // AM <--
 }
