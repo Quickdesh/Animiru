@@ -332,13 +332,18 @@ class PlayerActivity :
         }
 
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        fineVolume = audioManager!!.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() //AM
+        fineVolume = audioManager!!.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() // AM
         verticalScrollRight(0F)
         maxVolume = audioManager!!.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
         playerControls.binding.volumeBar.max = maxVolume
         playerControls.binding.volumeBar.secondaryProgress = maxVolume
 
-        brightness = if (preferences.playerBrightnessValue().get() == -1.0F) Utils.getScreenBrightness(this) ?: 0.5F else preferences.playerBrightnessValue().get()
+        brightness =
+            // AM <--
+            if (!preferences.gestureVolumeBrightness().get() || preferences.playerBrightnessValue().get() == -1.0F) {
+                Utils.getScreenBrightness(this) ?: 0.5F
+            } else preferences.playerBrightnessValue().get()
+        // AM -->
         verticalScrollLeft(0F)
 
         volumeControlStream = AudioManager.STREAM_MUSIC
