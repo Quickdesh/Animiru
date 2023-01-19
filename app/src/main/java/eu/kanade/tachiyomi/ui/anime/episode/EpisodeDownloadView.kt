@@ -18,9 +18,9 @@ class EpisodeDownloadView @JvmOverloads constructor(
     defStyle: Int = 0,
 ) : AbstractComposeView(context, attrs, defStyle) {
 
-    var state by mutableStateOf(AnimeDownload.State.NOT_DOWNLOADED)
-    var progress by mutableStateOf(0)
-    var downloadedEpisodeFileSizeMb: Long? = null // AM
+    private var state by mutableStateOf(AnimeDownload.State.NOT_DOWNLOADED)
+    private var progress by mutableStateOf(0)
+    private var downloadedEpisodeFileSizeMb: Long? by mutableStateOf(null); // AM
 
     var listener: (EpisodeDownloadAction) -> Unit = {}
 
@@ -36,7 +36,7 @@ class EpisodeDownloadView @JvmOverloads constructor(
         }
     }
 
-    /* AM Has bug. State doesn't apply for the first time, until scrolled/redrawn
+    // TODO: Does not work as expected.
     fun setState(
         state: AnimeDownload.State,
         progress: Int = 0,
@@ -46,6 +46,4 @@ class EpisodeDownloadView @JvmOverloads constructor(
         this.progress = progress
         this.downloadedEpisodeFileSizeMb = downloadedEpisodeFileSizeMb // AM
     }
-     */
-    // AM
 }

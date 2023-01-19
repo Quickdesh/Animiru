@@ -50,6 +50,7 @@ fun EpisodeDownloadIndicator(
                 Text(
                     text = "${downloadedEpisodeFileSizeMb}MB",
                     maxLines = 1,
+                    modifier = Modifier.padding(start = 8.dp),
                     style = MaterialTheme.typography.bodyMedium
                         .copy(color = MaterialTheme.colorScheme.primary, fontSize = 12.sp),
 
