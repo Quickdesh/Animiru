@@ -12,6 +12,7 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.content.res.Configuration
+import android.content.res.Resources
 import android.graphics.Color
 import android.graphics.drawable.Icon
 import android.media.AudioFocusRequest
@@ -22,7 +23,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
-import android.util.DisplayMetrics
 import android.util.Rational
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -292,7 +292,6 @@ class PlayerActivity :
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
         registerSecureActivity(this)
         Utils.copyAssets(this)
@@ -333,7 +332,7 @@ class PlayerActivity :
         }
 
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        fineVolume = if (preferences.playerVolumeValue().get() == -1.0F) audioManager!!.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat()else preferences.playerVolumeValue().get()
+        fineVolume = audioManager!!.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() //AM
         verticalScrollRight(0F)
         maxVolume = audioManager!!.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
         playerControls.binding.volumeBar.max = maxVolume
@@ -353,10 +352,9 @@ class PlayerActivity :
             }
             presenter.init(anime, episode)
         }
-        val dm = DisplayMetrics()
-        windowManager.defaultDisplay.getRealMetrics(dm)
-        width = dm.widthPixels
-        height = dm.heightPixels
+
+        width = Resources.getSystem().displayMetrics.widthPixels // AM
+        height = Resources.getSystem().displayMetrics.heightPixels // AM
         if (width <= height) {
             switchOrientation(false)
         } else {
@@ -1154,7 +1152,7 @@ class PlayerActivity :
     }
 
     override fun onDestroy() {
-        preferences.playerVolumeValue().set(fineVolume)
+        // preferences.playerVolumeValue().set(fineVolume) // AM
         preferences.playerBrightnessValue().set(brightness)
         presenter.deletePendingEpisodes()
         MPVLib.removeLogObserver(this)
@@ -1392,7 +1390,7 @@ class PlayerActivity :
                 ParcelFileDescriptor.adoptFd(fd).close() // we don't need that anymore
                 return path
             }
-        } catch (e: Exception) { }
+        } catch (_: Exception) { }
         // Else, pass the fd to mpv
         return "fdclose://$fd"
     }
