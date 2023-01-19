@@ -81,11 +81,9 @@ import eu.kanade.tachiyomi.data.preference.PreferencesHelper
 import eu.kanade.tachiyomi.ui.anime.AnimeScreenState
 import eu.kanade.tachiyomi.ui.anime.EpisodeItem
 import eu.kanade.tachiyomi.util.lang.toRelativeString
-import eu.kanade.tachiyomi.util.storage.DiskUtil
 import kotlinx.coroutines.runBlocking
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
-import java.io.File
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.*
@@ -731,17 +729,14 @@ private fun LazyListScope.sharedEpisodeItems(
         val preferences: PreferencesHelper = Injekt.get()
 
         val downloadedFileSize =
-            if (preferences.showDownloadedEpisodeSize() && downloadState == AnimeDownload.State.DOWNLOADED) {
-                val provider = AnimeDownloadProvider(LocalContext.current)
-                provider.findEpisodeDir(
+            if (preferences.showDownloadedEpisodeSize() && downloadState == AnimeDownload.State.DOWNLOADED)
+                AnimeDownloadProvider(LocalContext.current).getDownloadedEpisodeFileSizeBytes(
                     episode.name,
                     episode.scanlator,
                     state.anime.title,
                     state.source,
-                )?.filePath?.let {
-                    DiskUtil.getDirectorySize(File(it))
-                }
-            } else null
+                )
+            else null
         // AM  <--
 
         AnimeEpisodeListItem(

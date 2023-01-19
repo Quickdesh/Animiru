@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import logcat.LogPriority
 import uy.kohesive.injekt.injectLazy
+import java.io.File
 
 /**
  * This class is used to provide the directories where the downloads should be saved.
@@ -154,4 +155,25 @@ class AnimeDownloadProvider(private val context: Context) {
         val episodeDirName = getEpisodeDirName(episodeName, chapterScanlator)
         return listOf(episodeDirName)
     }
+
+    // AM -->
+    /**
+     * Returns an episode file size in bytes.
+     * Returns null if the episode is not found in expected location
+     *
+     * @param episodeName the name of the episode to query.
+     * @param episodeScanlator scanlator of the episode to query
+     * @param animeTitle the title of the anime
+     * @param animeSource the source of the anime
+     */
+    fun getDownloadedEpisodeFileSizeBytes(
+        episodeName: String, episodeScanlator: String?,
+        animeTitle: String, animeSource: AnimeSource,
+    ): Long? {
+        return findEpisodeDir(episodeName, episodeScanlator, animeTitle, animeSource)
+          ?.filePath?.let {
+            DiskUtil.getDirectorySize(File(it))
+        }
+    }
+    // AM <--
 }
