@@ -43,6 +43,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:imeOptions="actionSearch"
+                android:maxLength="60"
                 android:inputType="text"
                 android:maxLines="1" />
 
