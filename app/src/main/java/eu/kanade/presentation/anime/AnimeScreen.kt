@@ -725,19 +725,6 @@ private fun LazyListScope.sharedEpisodeItems(
         val scanlator =
             remember(episode.scanlator) { episode.scanlator.takeIf { !it.isNullOrBlank() } }
 
-        // AM  -->
-        val preferences: PreferencesHelper = Injekt.get()
-
-        val downloadedFileSize =
-            if (preferences.showDownloadedEpisodeSize() && downloadState == AnimeDownload.State.DOWNLOADED) {
-                AnimeDownloadProvider(LocalContext.current).getDownloadedEpisodeFileSizeBytes(
-                    episode.name,
-                    episode.scanlator,
-                    state.anime.title,
-                    state.source,
-                )
-            } else null
-        // AM  <--
 
         AnimeEpisodeListItem(
             title = episodeTitle,
@@ -763,7 +750,7 @@ private fun LazyListScope.sharedEpisodeItems(
             selected = selected.contains(episodeItem),
             downloadState = downloadState,
             // AM -->
-            downloadedEpisodeFileSizeMb = downloadedFileSize?.let {
+            downloadedEpisodeFileSizeMb = episodeItem.downloadedFileSize?.let {
                 // Convert it from bytes to Megabytes
                 it / (1000 * 1000)
             },

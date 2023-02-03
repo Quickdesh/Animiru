@@ -32,6 +32,7 @@ import eu.kanade.tachiyomi.data.animelib.CustomAnimeManager
 import eu.kanade.tachiyomi.data.cache.AnimeCoverCache
 import eu.kanade.tachiyomi.data.database.models.AnimeTrack
 import eu.kanade.tachiyomi.data.download.AnimeDownloadManager
+import eu.kanade.tachiyomi.data.download.AnimeDownloadProvider
 import eu.kanade.tachiyomi.data.download.model.AnimeDownload
 import eu.kanade.tachiyomi.data.preference.PreferencesHelper
 import eu.kanade.tachiyomi.data.track.TrackManager
@@ -489,10 +490,27 @@ class AnimePresenter(
                 downloaded -> AnimeDownload.State.DOWNLOADED
                 else -> AnimeDownload.State.NOT_DOWNLOADED
             }
+
+            // AM  -->
+            val animeSource = Injekt.get<AnimeSourceManager>().getOrStub(anime.source)
+            val context = view!!.applicationContext!!
+
+            val downloadedFileSize =
+                if (preferences.showDownloadedEpisodeSize() && downloadState == AnimeDownload.State.DOWNLOADED) {
+                    AnimeDownloadProvider(context).getDownloadedEpisodeFileSizeBytes(
+                        episode.name,
+                        episode.scanlator,
+                        anime.title,
+                        animeSource,
+                    )
+                } else null
+            // AM  <--
+
             EpisodeItem(
                 episode = episode,
                 downloadState = downloadState,
                 downloadProgress = activeDownload?.progress ?: 0,
+                downloadedFileSize
             )
         }
     }
@@ -994,6 +1012,7 @@ data class EpisodeItem(
     val episode: DomainEpisode,
     val downloadState: AnimeDownload.State,
     val downloadProgress: Int,
+    val downloadedFileSize:Long?
 ) {
     val isDownloaded = downloadState == AnimeDownload.State.DOWNLOADED
 }
