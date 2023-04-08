@@ -2,9 +2,7 @@ name: Android CI
 
 on:
   push:
-    branches: [ $default-branch ]
-  pull_request:
-    branches: [ $default-branch ]
+    branches: ${{ github.event.repository.default_branch }}
 
 jobs:
   build:
