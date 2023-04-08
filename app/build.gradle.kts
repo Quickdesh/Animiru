@@ -26,7 +26,7 @@ android {
     ndkVersion = AndroidConfig.ndk
 
     defaultConfig {
-        applicationId = "xyz.Quickdev.Animiru.mi"
+        applicationId = "xyz.Quickdev.Animiru.sussybaka"
         minSdk = AndroidConfig.minSdk
         targetSdk = AndroidConfig.targetSdk
         versionCode = 94
