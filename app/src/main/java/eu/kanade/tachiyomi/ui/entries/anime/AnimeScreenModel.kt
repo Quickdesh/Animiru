@@ -39,6 +39,7 @@ import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadCache
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadManager
+import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadProvider
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadService
 import eu.kanade.tachiyomi.data.download.anime.model.AnimeDownload
 import eu.kanade.tachiyomi.data.library.anime.CustomAnimeManager
@@ -108,6 +109,7 @@ class AnimeInfoScreenModel(
     private val getTracks: GetAnimeTracks = Injekt.get(),
     private val setAnimeCategories: SetAnimeCategories = Injekt.get(),
     val snackbarHostState: SnackbarHostState = SnackbarHostState(),
+    private val animeDownloadProvider: AnimeDownloadProvider = Injekt.get()
 ) : StateScreenModel<AnimeScreenState>(AnimeScreenState.Loading) {
 
     private val successState: AnimeScreenState.Success?
@@ -612,6 +614,20 @@ class AnimeInfoScreenModel(
                     )
                 },
                 selected = episode.id in selectedEpisodeIds,
+
+                // AM (FS) -->
+                fileSize = if (downloaded && downloadPreferences.showEpisodeFileSize().get()) {
+
+                       animeDownloadProvider.getEpisodeFileSize(
+                            episode.name,
+                            episode.scanlator,
+                            anime.ogTitle,
+                            sourceManager.getOrStub(anime.source),
+                        )
+                } else {
+                    null
+                },
+                // <-- AM (FS)
             )
         }
     }
@@ -1236,6 +1252,10 @@ data class EpisodeItem(
     val episode: Episode,
     val downloadState: AnimeDownload.State,
     val downloadProgress: Int,
+
+    // AM (FS) -->
+    val fileSize: Long?,
+    // <-- AM (FS)
 
     val episodeTitleString: String,
     val dateUploadString: String?,

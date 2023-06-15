@@ -39,7 +39,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -68,7 +67,6 @@ import eu.kanade.presentation.entries.anime.components.ExpandableAnimeDescriptio
 import eu.kanade.presentation.util.isScrolledToEnd
 import eu.kanade.presentation.util.isScrollingUp
 import eu.kanade.tachiyomi.R
-import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadProvider
 import eu.kanade.tachiyomi.data.download.anime.model.AnimeDownload
 import eu.kanade.tachiyomi.source.anime.AnimeSourceManager
 import eu.kanade.tachiyomi.source.anime.getNameForAnimeInfo
@@ -767,12 +765,7 @@ private fun LazyListScope.sharedEpisodeItems(
                 null
             },
             // AM (FS) -->
-            fileSize = if (downloadPreferences.showEpisodeFileSize().get()) {
-                AnimeDownloadProvider(LocalContext.current)
-                    .getEpisodeFileSize(episodeItem.episode.name, episodeItem.episode.scanlator, state.anime.ogTitle, state.source)
-            } else {
-                null
-            },
+            fileSize = episodeItem.fileSize,
             // <-- AM (FS)
         )
     }

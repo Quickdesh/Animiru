@@ -136,7 +136,7 @@ class AnimeUpdatesScreenModel(
                 downloadProgressProvider = { activeDownload?.progress ?: 0 },
                 selected = it.episodeId in selectedEpisodeIds,
                 // AM (FS) -->
-                fileSize = if (downloadPreferences.showEpisodeFileSize().get()) {
+                fileSize = if (downloaded && downloadPreferences.showEpisodeFileSize().get()) {
                     downloadProvider.getEpisodeFileSize(it.episodeName, it.scanlator, it.ogAnimeTitle, sourceManager.get(it.sourceId))
                 } else {
                     null
