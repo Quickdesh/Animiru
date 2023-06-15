@@ -109,7 +109,7 @@ class AnimeInfoScreenModel(
     private val getTracks: GetAnimeTracks = Injekt.get(),
     private val setAnimeCategories: SetAnimeCategories = Injekt.get(),
     val snackbarHostState: SnackbarHostState = SnackbarHostState(),
-    private val animeDownloadProvider: AnimeDownloadProvider = Injekt.get()
+    private val animeDownloadProvider: AnimeDownloadProvider = Injekt.get(),
 ) : StateScreenModel<AnimeScreenState>(AnimeScreenState.Loading) {
 
     private val successState: AnimeScreenState.Success?
@@ -617,13 +617,12 @@ class AnimeInfoScreenModel(
 
                 // AM (FS) -->
                 fileSize = if (downloaded && downloadPreferences.showEpisodeFileSize().get()) {
-
-                       animeDownloadProvider.getEpisodeFileSize(
-                            episode.name,
-                            episode.scanlator,
-                            anime.ogTitle,
-                            sourceManager.getOrStub(anime.source),
-                        )
+                    animeDownloadProvider.getEpisodeFileSize(
+                        episode.name,
+                        episode.scanlator,
+                        anime.ogTitle,
+                        sourceManager.getOrStub(anime.source),
+                    )
                 } else {
                     null
                 },
