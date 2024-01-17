@@ -56,7 +56,7 @@
     <string name="clean_seen_downloads">清理已看過</string>
     <string name="clean_seen_entries_not_in_library">清理不在媒體庫中的條目</string>
     <plurals name="cleanup_done">
-        <item quantity="one">清理完成。已刪除 %d 個文件夾</item>
+    
         <item quantity="other">清理完成。已刪除 %d 個文件夾</item>
     </plurals>
 
