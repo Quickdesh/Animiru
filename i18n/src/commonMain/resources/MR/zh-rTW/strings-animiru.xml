@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="action_filter_fillermarked">標記補充劇集</string>
-    <string name="action_fillermark_episode">標記補充劇集</string>
-    <string name="action_remove_fillermark_episode">取消標記補充劇集</string>
-    <string name="pref_not_download_fillermarked_items">禁止下載標記補充劇集</string>
+    <string name="action_filter_fillermarked">標記</string>
+    <string name="action_fillermark_episode">標記劇集</string>
+    <string name="action_remove_fillermark_episode">取消標記劇集</string>
+    <string name="pref_not_download_fillermarked_items">禁止下載標記劇集</string>
     <string name="pref_category_navbar">導覽欄</string>
     <string name="pref_hide_updates_button">在導覽欄顯示更新</string>
-    <string name="pref_hide_history_button">在導覽欄顯示歷史</string>
+    <string name="pref_hide_history_button">在導覽欄顯示歷史紀錄</string>
     <string name="pref_show_downloaded_episode_file_size">顯示下載劇集文件大小</string>
     <string name="action_display_show_continue_watching_button">顯示繼續觀看按鈕</string>
     <string name="skipped_reason_not_caught_up_anime">跳過因為有未看過的劇集</string>
     <string name="skipped_reason_not_started_anime">跳過因為沒有觀看過的劇集</string>
-    <string name="pref_storage_usage">儲存使用情況</string>
+    <string name="pref_storage_usage">存儲使用情況</string>
 
     <!-- Entry Info Edit -->
     <string name="reset_tags">重設標籤</string>
@@ -39,22 +39,22 @@
     <string name="pref_category_discord_incognito">RPC 隱身</string>
     <string name="pref_discord_incognito">Discord 隱身模式</string>
     <string name="pref_discord_incognito_summary">啟用隱身模式時覆蓋</string>
-    <string name="pref_discord_incognito_categories_details">包含的類別中的條目將不會顯示在 Discord 中</string>
+    <string name="pref_discord_incognito_categories_details">包含在指定類別中的條目將不會顯示在 Discord 中</string>
 
     <!-- Discord section -->
-    <string name="browsing">瀏覽</string>
-    <string name="scrolling">滾動</string>
-    <string name="messing">嬉戲</string>
+    <string name="browsing">瀏覽中</string>
+    <string name="scrolling">滾動中</string>
+    <string name="messing">胡鬧中</string>
     <string name="video">影片</string>
 
     <!-- Advanced Settings -->
     <string name="starting_cleanup">開始清理</string>
-    <string name="clean_up_downloaded_episodes">清理下載的劇集</string>
+    <string name="clean_up_downloaded_episodes">清理已下載的劇集</string>
     <string name="delete_unused_episodes">刪除不存在、部分下載和已看過的劇集文件夾</string>
     <string name="no_folders_to_cleanup">沒有要清理的文件夾</string>
-    <string name="clean_orphaned_downloads">清理孤立的下載</string>
-    <string name="clean_seen_downloads">清理已看過的下載</string>
-    <string name="clean_seen_entries_not_in_library">清理不在圖書館中的條目</string>
+    <string name="clean_orphaned_downloads">清理孤立</string>
+    <string name="clean_seen_downloads">清理已看過</string>
+    <string name="clean_seen_entries_not_in_library">清理不在媒體庫中的條目</string>
     <plurals name="cleanup_done">
         <item quantity="one">清理完成。已刪除 %d 個文件夾</item>
         <item quantity="other">清理完成。已刪除 %d 個文件夾</item>
@@ -65,9 +65,9 @@
     <string name="pref_invalidate_episode_download_cache_summary">強制應用程式重新檢查已下載的劇集</string>
     <string name="pref_update_only_completely_seen">僅包含未看過的劇集</string>
     <string name="pref_category_delete_episodes">刪除劇集</string>
-    <string name="pref_remove_after_marked_as_seen">手動標記為已看過後刪除</string>
-    <string name="pref_remove_after_seen">自動觀看後刪除</string>
-    <string name="pref_library_anime_update_show_tab_badge">在更新圖標上顯示未看過的計數</string>
+    <string name="pref_remove_after_marked_as_seen">手動標記為已看</string>
+    <string name="pref_remove_after_seen">觀看後自動刪除</string>
+    <string name="pref_library_anime_update_show_tab_badge">顯示更新圖示上的未看數量</string>
     <string name="pref_auto_update_anime_sync">觀看後更新進度</string>
 
     <string name="last_seen_episode">最後觀看的劇集</string>
@@ -83,10 +83,10 @@
     <string name="ungrouped">未分組</string>
     <string name="not_tracked">未追蹤</string>
     <string name="group">分組</string>
-    <string name="library_group_updates">圖書館動態類別更新</string>
+    <string name="library_group_updates">媒體庫動態類別更新</string>
     <string name="library_group_updates_global">始終啟動全域更新</string>
     <string name="library_group_updates_all_but_ungrouped">僅為未分組啟動全域更新，為其他啟動類別更新</string>
     <string name="library_group_updates_all">始終啟動類別更新</string>
 
-    
+
 </resources>
