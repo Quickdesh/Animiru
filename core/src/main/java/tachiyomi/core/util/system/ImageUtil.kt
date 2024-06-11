@@ -1,7 +1,6 @@
 package tachiyomi.core.util.system
 
-import tachiyomi.decoder.Format
-import tachiyomi.decoder.ImageDecoder
+import android.graphics.BitmapFactory
 import java.io.InputStream
 import java.net.URLConnection
 
@@ -22,16 +21,16 @@ object ImageUtil {
         return openStream().use { findImageType(it) }
     }
 
-    fun findImageType(stream: InputStream): ImageType? {
+    private fun findImageType(stream: InputStream): ImageType? {
         return try {
-            when (getImageType(stream)?.format) {
-                Format.Avif -> ImageType.AVIF
-                Format.Gif -> ImageType.GIF
-                Format.Heif -> ImageType.HEIF
-                Format.Jpeg -> ImageType.JPEG
-                Format.Jxl -> ImageType.JXL
-                Format.Png -> ImageType.PNG
-                Format.Webp -> ImageType.WEBP
+            when (getImageType(stream)) {
+                "image/avif" -> ImageType.AVIF
+                "image/gif" -> ImageType.GIF
+                "image/heif" -> ImageType.HEIF
+                "image/jpeg" -> ImageType.JPEG
+                "image/jxl" -> ImageType.JXL
+                "image/png" -> ImageType.PNG
+                "image/webp" -> ImageType.WEBP
                 else -> null
             }
         } catch (e: Exception) {
@@ -39,21 +38,15 @@ object ImageUtil {
         }
     }
 
-    private fun getImageType(stream: InputStream): tachiyomi.decoder.ImageType? {
-        val bytes = ByteArray(32)
-
-        val length = if (stream.markSupported()) {
-            stream.mark(bytes.size)
-            stream.read(bytes, 0, bytes.size).also { stream.reset() }
-        } else {
-            stream.read(bytes, 0, bytes.size)
+    private fun getImageType(stream: InputStream): String? {
+        val mimeType = URLConnection.guessContentTypeFromStream(stream)
+        if (mimeType != null && mimeType.startsWith("image/")) {
+            return mimeType
         }
 
-        if (length == -1) {
-            return null
-        }
-
-        return ImageDecoder.findType(bytes)
+        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeStream(stream, null, options)
+        return options.outMimeType
     }
 
     enum class ImageType(val mime: String, val extension: String) {

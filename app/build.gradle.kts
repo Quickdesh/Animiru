@@ -228,7 +228,6 @@ dependencies {
     implementation(libs.subsamplingscaleimageview) {
         exclude(module = "image-decoder")
     }
-    implementation(libs.image.decoder)
 
     // UI libraries
     implementation(libs.material)

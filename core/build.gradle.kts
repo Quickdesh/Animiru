@@ -29,8 +29,6 @@ dependencies {
     api(libs.okhttp.dnsoverhttps)
     api(libs.okio)
 
-    implementation(libs.image.decoder)
-
     implementation(libs.unifile)
 
     api(kotlinx.coroutines.core)
