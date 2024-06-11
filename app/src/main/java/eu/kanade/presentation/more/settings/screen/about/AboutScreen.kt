@@ -210,10 +210,7 @@ object AboutScreen : Screen() {
             try {
                 when (
                     val result = withIOContext {
-                        updateChecker.checkForUpdate(
-                            context,
-                            forceCheck = true,
-                        )
+                        updateChecker.checkForUpdate(context, forceCheck = true)
                     }
                 ) {
                     is GetApplicationRelease.Result.NewUpdate -> {
