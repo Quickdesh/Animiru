@@ -110,6 +110,7 @@ class ShikimoriApi(
             total_episodes = obj["episodes"]!!.jsonPrimitive.int
             cover_url = baseUrl + obj["image"]!!.jsonObject["preview"]!!.jsonPrimitive.content
             summary = ""
+            score = (obj["score"]!!.jsonPrimitive.int).toFloat()
             tracking_url = baseUrl + obj["url"]!!.jsonPrimitive.content
             publishing_status = obj["status"]!!.jsonPrimitive.content
             publishing_type = obj["kind"]!!.jsonPrimitive.content
