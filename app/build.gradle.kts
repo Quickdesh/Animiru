@@ -93,7 +93,7 @@ android {
 
     productFlavors {
         create("standard") {
-            buildConfigField("boolean", "INCLUDE_UPDATER", "true")
+            buildConfigField("boolean", "INCLUDE_UPDATER", "false")
             dimension = "default"
         }
         create("dev") {
