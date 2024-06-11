@@ -1011,6 +1011,7 @@ private fun LazyListScope.sharedEpisodeItems(
                         fileSizeAsync = withIOContext {
                             animeDownloadProvider.getEpisodeFileSize(
                                 episodeItem.episode.name,
+                                episodeItem.episode.url,
                                 episodeItem.episode.scanlator,
                                 anime.ogTitle,
                                 source,

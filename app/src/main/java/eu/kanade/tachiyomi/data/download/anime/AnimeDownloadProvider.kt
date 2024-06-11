@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.data.download.anime
 import android.content.Context
 import com.hippo.unifile.UniFile
 import eu.kanade.tachiyomi.animesource.AnimeSource
+import eu.kanade.tachiyomi.util.size
 import eu.kanade.tachiyomi.util.storage.DiskUtil
 import logcat.LogPriority
 import tachiyomi.core.i18n.stringResource
@@ -14,6 +15,8 @@ import tachiyomi.i18n.MR
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.File
+import tachiyomi.source.local.entries.anime.isLocal
+import tachiyomi.source.local.io.anime.LocalAnimeSourceFileSystem
 
 /**
  * This class is used to provide the directories where the downloads should be saved.
@@ -24,6 +27,9 @@ import java.io.File
 class AnimeDownloadProvider(
     private val context: Context,
     private val storageManager: StorageManager = Injekt.get(),
+    // AM (FILE_SIZE) -->
+    private val localFileSystem: LocalAnimeSourceFileSystem = Injekt.get(),
+    // <-- AM (FILE_SIZE)
 ) {
 
     val downloadsDir: UniFile?
@@ -217,15 +223,18 @@ class AnimeDownloadProvider(
      */
     fun getEpisodeFileSize(
         episodeName: String,
+        episodeUrl: String?,
         episodeScanlator: String?,
         animeTitle: String,
         animeSource: AnimeSource?,
     ): Long? {
         if (animeSource == null) return null
-        return findEpisodeDir(episodeName, episodeScanlator, animeTitle, animeSource)
-            ?.filePath?.let {
-                DiskUtil.getDirectorySize(File(it))
-            }
+        return if (animeSource.isLocal()) {
+            val (animeDirName, episodeDirName) = episodeUrl?.split('/', limit = 2) ?: return null
+            localFileSystem.getBaseDirectory()?.findFile(animeDirName, true)?.findFile(episodeDirName, true)?.size()
+        } else {
+            findEpisodeDir(episodeName, episodeScanlator, animeTitle, animeSource)?.size()
+        }
     }
     // <-- AM (FILE-SIZE)
 }

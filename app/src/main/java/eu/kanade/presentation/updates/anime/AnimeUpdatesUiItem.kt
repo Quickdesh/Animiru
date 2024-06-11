@@ -266,6 +266,7 @@ fun AnimeUpdatesUiItem(
                 fileSizeAsync = withIOContext {
                     animeDownloadProvider.getEpisodeFileSize(
                         update.episodeName,
+                        null,
                         update.scanlator,
                         update.ogAnimeTitle,
                         animeSourceManager.getOrStub(update.sourceId),
