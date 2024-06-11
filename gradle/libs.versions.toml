@@ -103,7 +103,7 @@ voyager-transitions = { module = "cafe.adriel.voyager:voyager-transitions", vers
 ktlint = "org.jlleitschuh.gradle:ktlint-gradle:11.6.1"
 
 aniyomi-mpv = "com.github.aniyomiorg:aniyomi-mpv-lib:1.10.n"
-ffmpeg-kit = "com.github.jmir1:ffmpeg-kit:1.15"
+ffmpeg-kit = "com.github.jmir1:ffmpeg-kit:1.9"
 arthenica-smartexceptions = "com.arthenica:smart-exception-java:0.1.1"
 
 seeker = "io.github.2307vivek:seeker:1.1.1"
