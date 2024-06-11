@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -124,9 +125,23 @@ fun NavigationPill(
             tonalElevation = 1.3.dp,
         ) {
             NavigationBarItemBackground(currentIndex)
-            Row {
-                tabs.fastForEach {
-                    NavigationBarItem(it, updateTab)
+            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                Row {
+                    tabs.fastForEach {
+                        NavigationBarItem(it, updateTab)
+                    }
+                }
+
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    tabs.fastForEach {
+                        Text(
+                            text = it.options.title,
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .offset(x = pillItemWidth * (it.options.index.toInt() - 2)),
+                        )
+                    }
                 }
             }
         }
