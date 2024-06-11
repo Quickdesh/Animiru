@@ -74,7 +74,7 @@ object MoreTab : Tab() {
             onDownloadedOnlyChange = { screenModel.downloadedOnly = it },
             incognitoMode = screenModel.incognitoMode,
             onIncognitoModeChange = { screenModel.incognitoMode = it },
-            isFDroid = context.isInstalledFromFDroid(),
+            isFDroid = false,
             onClickDownloadQueue = { navigator.push(AnimeDownloadQueueScreen) },
             onClickCategories = { navigator.push(CategoryScreen()) },
             onClickStats = { navigator.push(StatsScreen()) },
