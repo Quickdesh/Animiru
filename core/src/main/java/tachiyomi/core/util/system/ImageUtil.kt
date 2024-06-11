@@ -21,7 +21,7 @@ object ImageUtil {
         return openStream().use { findImageType(it) }
     }
 
-    private fun findImageType(stream: InputStream): ImageType? {
+    fun findImageType(stream: InputStream): ImageType? {
         return try {
             when (getImageType(stream)) {
                 "image/avif" -> ImageType.AVIF
