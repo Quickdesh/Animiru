@@ -105,6 +105,7 @@ fun AnimeExtensionScreen(
         // <-- AM (BROWSE)
         PullRefresh(
             refreshing = state.isRefreshing,
+            indicatorPadding = contentPadding,
             onRefresh = onRefresh,
             enabled = { !state.isLoading },
         ) {
