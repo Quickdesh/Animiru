@@ -47,6 +47,7 @@
         android:requestLegacyExternalStorage="true"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:appCategory="video"
         android:theme="@style/Theme.Tachiyomi">
 
         <activity
@@ -144,10 +145,20 @@
             android:configChanges="orientation|screenLayout|screenSize|smallestScreenSize|keyboardHidden|keyboard"
             android:supportsPictureInPicture="true"
             android:resizeableActivity="true"
-            android:exported="false"
-            tools:targetApi="n">
+            android:exported="true">
             <intent-filter>
                 <action android:name="com.samsung.android.support.REMOTE_ACTION" />
+            </intent-filter>
+            <intent-filter> <!-- Local files with MIME type (e.g. Google Drive) -->
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="video/*" />
+                <data android:mimeType="audio/*" />
             </intent-filter>
 
             <meta-data android:name="com.samsung.android.support.REMOTE_ACTION"
