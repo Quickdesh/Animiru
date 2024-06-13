@@ -149,7 +149,7 @@
             <intent-filter>
                 <action android:name="com.samsung.android.support.REMOTE_ACTION" />
             </intent-filter>
-            <intent-filter> <!-- Local files with MIME type (e.g. Google Drive) -->
+            <intent-filter> <!-- Local files with MIME type -->
                 <action android:name="android.intent.action.VIEW" />
 
                 <category android:name="android.intent.category.DEFAULT" />
@@ -158,7 +158,6 @@
                 <data android:scheme="content" />
                 <data android:scheme="file" />
                 <data android:mimeType="video/*" />
-                <data android:mimeType="audio/*" />
             </intent-filter>
 
             <meta-data android:name="com.samsung.android.support.REMOTE_ACTION"

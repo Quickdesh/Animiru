@@ -22,7 +22,6 @@ import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.DisplayMetrics
-import android.util.Log
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
@@ -149,20 +148,17 @@ class PlayerActivity : BaseActivity() {
     }
 
     override fun onNewIntent(intent: Intent) {
-        var animeId = intent.extras?.getLong("animeId", -1)
-        var episodeId = intent.extras?.getLong("episodeId", -1)
-        var vidList = intent.extras?.getString("vidList", "")
-        var vidIndex = intent.extras?.getInt("vidIndex", 0)
-        val isLocalVideo = intent.data.toString() != "null"
+        val animeId = intent.extras?.getLong("animeId", -1) ?: -1
+        val episodeId = intent.extras?.getLong("episodeId", -1) ?: -1
+        val vidList = intent.extras?.getString("vidList", "") ?: ""
+        val vidIndex = intent.extras?.getInt("vidIndex", 0) ?: 0
+        val isLocalVideo = intent.data?.toString() != "null"
         if ((animeId == -1L || episodeId == -1L) && !isLocalVideo) {
             finish()
             return
         }
-        NotificationReceiver.dismissNotification(
-            this,
-            animeId.hashCode(),
-            Notifications.ID_NEW_EPISODES,
-        )
+
+        NotificationReceiver.dismissNotification(this, animeId.hashCode(), Notifications.ID_NEW_EPISODES,)
 
         viewModel.saveCurrentEpisodeWatchingProgress()
 
@@ -174,7 +170,6 @@ class PlayerActivity : BaseActivity() {
             val initResult = if (isLocalVideo) {
                 val localUrl = intent.data.toString()
                 val video = Video(localUrl,localUrl,localUrl)
-                Log.i("FDF", "HILOLOL $localUrl")
                 val result = PlayerViewModel.InitResult(
                     videoList = listOf(video),
                     videoIndex = 0,
@@ -182,11 +177,7 @@ class PlayerActivity : BaseActivity() {
                 )
                 Pair(result, Result.success(true))
             } else {
-                animeId = animeId ?: return@launchNonCancellable
-                episodeId = episodeId ?: return@launchNonCancellable
-                vidList = vidList ?: return@launchNonCancellable
-                vidIndex = vidIndex ?: return@launchNonCancellable
-                viewModel.init(animeId!!, episodeId!!, vidList!!, vidIndex!!)
+                viewModel.init(animeId, episodeId, vidList, vidIndex)
             }
 
             if (!initResult.second.getOrDefault(false)) {
@@ -197,7 +188,6 @@ class PlayerActivity : BaseActivity() {
                     setInitialEpisodeError(exception)
                 }
             }
-
             lifecycleScope.launch {
                 setVideoList(
                     qualityIndex = initResult.first.videoIndex,
@@ -1640,10 +1630,8 @@ class PlayerActivity : BaseActivity() {
             streams.subtitle.tracks = arrayOf(Track("nothing", "None")) + it.subtitleTracks.toTypedArray()
             streams.audio.tracks = arrayOf(Track("nothing", "None")) + it.audioTracks.toTypedArray()
             MPVLib.command(arrayOf("loadfile", parseVideoUrl(it.videoUrl)))
-            Log.i("FDF", "HILOLOL A")
         }
         refreshUi()
-        Log.i("FDF", "HILOLOL B")
 
         // AM (DISCORD_RPC) -->
         updateDiscordRPC(exitingPlayer = false)
@@ -1726,7 +1714,6 @@ class PlayerActivity : BaseActivity() {
     // at void is.xyz.mpv.MPVLib.event(int) (MPVLib.java:86)
     @SuppressLint("SourceLockedOrientationActivity")
     internal suspend fun fileLoaded() {
-        Log.i("FDF", "HILOLOL fileLoaded")
         val localLangName = LocaleHelper.getSimpleLocaleDisplayName()
         clearTracks()
         player.loadTracks()
