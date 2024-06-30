@@ -2,10 +2,11 @@ package eu.kanade.tachiyomi.extension.anime
 
 import android.content.Context
 import android.graphics.drawable.Drawable
+import eu.kanade.domain.extension.anime.interactor.TrustAnimeExtension
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.tachiyomi.extension.ExtensionUpdateNotifier
 import eu.kanade.tachiyomi.extension.InstallStep
-import eu.kanade.tachiyomi.extension.anime.api.AnimeExtensionGithubApi
+import eu.kanade.tachiyomi.extension.anime.api.AnimeExtensionApi
 import eu.kanade.tachiyomi.extension.anime.model.AnimeExtension
 import eu.kanade.tachiyomi.extension.anime.model.AnimeLoadResult
 import eu.kanade.tachiyomi.extension.anime.util.AnimeExtensionInstallReceiver
@@ -18,7 +19,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import logcat.LogPriority
 import tachiyomi.core.i18n.stringResource
-import tachiyomi.core.preference.plusAssign
 import tachiyomi.core.util.lang.launchNow
 import tachiyomi.core.util.lang.withUIContext
 import tachiyomi.core.util.system.logcat
@@ -41,6 +41,7 @@ import java.util.Locale
 class AnimeExtensionManager(
     private val context: Context,
     private val preferences: SourcePreferences = Injekt.get(),
+    private val trustExtension: TrustAnimeExtension = Injekt.get(),
 ) {
 
     var isInitialized = false
@@ -49,7 +50,7 @@ class AnimeExtensionManager(
     /**
      * API where all the available anime extensions can be found.
      */
-    private val api = AnimeExtensionGithubApi()
+    private val api = AnimeExtensionApi()
 
     /**
      * The installer which installs, updates and uninstalls the anime extensions.
@@ -94,10 +95,10 @@ class AnimeExtensionManager(
 
     fun getSourceData(id: Long) = availableAnimeExtensionsSourcesData[id]
 
-    private val _untrustedAnimeExtensionsFlow = MutableStateFlow(
+    private val _untrustedExtensionsFlow = MutableStateFlow(
         emptyList<AnimeExtension.Untrusted>(),
     )
-    val untrustedExtensionsFlow = _untrustedAnimeExtensionsFlow.asStateFlow()
+    val untrustedExtensionsFlow = _untrustedExtensionsFlow.asStateFlow()
 
     init {
         initAnimeExtensions()
@@ -114,7 +115,7 @@ class AnimeExtensionManager(
             .filterIsInstance<AnimeLoadResult.Success>()
             .map { it.extension }
 
-        _untrustedAnimeExtensionsFlow.value = animeextensions
+        _untrustedExtensionsFlow.value = animeextensions
             .filterIsInstance<AnimeLoadResult.Untrusted>()
             .map { it.extension }
 
@@ -190,7 +191,7 @@ class AnimeExtensionManager(
             val pkgName = installedExt.pkgName
             val availableExt = availableAnimeExtensions.find { it.pkgName == pkgName }
 
-            if (!installedExt.isUnofficial && availableExt == null && !installedExt.isObsolete) {
+            if (availableExt == null && !installedExt.isObsolete) {
                 mutInstalledAnimeExtensions[index] = installedExt.copy(isObsolete = true)
                 changed = true
             } else if (availableExt != null) {
@@ -264,18 +265,18 @@ class AnimeExtensionManager(
      *
      * @param signature The signature to whitelist.
      */
-    fun trustSignature(signature: String) {
-        val untrustedSignatures = _untrustedAnimeExtensionsFlow.value.map { it.signatureHash }.toSet()
-        if (signature !in untrustedSignatures) return
+    fun trust(extension: AnimeExtension.Untrusted) {
+        val untrustedPkgNames = _untrustedExtensionsFlow.value.map { it.pkgName }.toSet()
+        if (extension.pkgName !in untrustedPkgNames) return
 
-        AnimeExtensionLoader.trustedSignatures += signature
-        preferences.trustedSignatures() += signature
+        trustExtension.trust(extension.pkgName, extension.versionCode, extension.signatureHash)
 
-        val nowTrustedAnimeExtensions = _untrustedAnimeExtensionsFlow.value.filter { it.signatureHash == signature }
-        _untrustedAnimeExtensionsFlow.value -= nowTrustedAnimeExtensions
+        val nowTrustedExtensions = _untrustedExtensionsFlow.value
+            .filter { it.pkgName == extension.pkgName && it.versionCode == extension.versionCode }
+        _untrustedExtensionsFlow.value -= nowTrustedExtensions
 
         launchNow {
-            nowTrustedAnimeExtensions
+            nowTrustedExtensions
                 .map { animeextension ->
                     async {
                         AnimeExtensionLoader.loadExtensionFromPkgName(
@@ -325,9 +326,9 @@ class AnimeExtensionManager(
         if (installedAnimeExtension != null) {
             _installedAnimeExtensionsFlow.value -= installedAnimeExtension
         }
-        val untrustedAnimeExtension = _untrustedAnimeExtensionsFlow.value.find { it.pkgName == pkgName }
+        val untrustedAnimeExtension = _untrustedExtensionsFlow.value.find { it.pkgName == pkgName }
         if (untrustedAnimeExtension != null) {
-            _untrustedAnimeExtensionsFlow.value -= untrustedAnimeExtension
+            _untrustedExtensionsFlow.value -= untrustedAnimeExtension
         }
     }
 
@@ -347,7 +348,7 @@ class AnimeExtensionManager(
         }
 
         override fun onExtensionUntrusted(extension: AnimeExtension.Untrusted) {
-            _untrustedAnimeExtensionsFlow.value += extension
+            _untrustedExtensionsFlow.value += extension
         }
 
         override fun onPackageUninstalled(pkgName: String) {
@@ -372,7 +373,7 @@ class AnimeExtensionManager(
         availableAnimeExtension: AnimeExtension.Available? = null,
     ): Boolean {
         val availableExt = availableAnimeExtension ?: _availableAnimeExtensionsFlow.value.find { it.pkgName == pkgName }
-        if (isUnofficial || availableExt == null) return false
+        if (availableExt == null) return false
 
         return (availableExt.versionCode > versionCode || availableExt.libVersion > libVersion)
     }

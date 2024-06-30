@@ -28,4 +28,8 @@
         <item quantity="one">Episodes %1$s and 1 more</item>
         <item quantity="other">Episodes %1$s and %2$d more</item>
     </plurals>
+    <plurals name="num_repos">
+        <item quantity="one">%d repo</item>
+        <item quantity="other">%d repos</item>
+    </plurals>
 </resources>

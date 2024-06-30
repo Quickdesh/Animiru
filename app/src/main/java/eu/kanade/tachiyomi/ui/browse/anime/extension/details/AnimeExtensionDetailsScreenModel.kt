@@ -96,9 +96,6 @@ class AnimeExtensionDetailsScreenModel(
 
         val pkgName = extension.pkgName.substringAfter("eu.kanade.tachiyomi.animeextension.")
         val pkgFactory = extension.pkgFactory
-        if (extension.hasChangelog) {
-            return createUrl(URL_EXTENSION_BLOB, pkgName, pkgFactory, "/CHANGELOG.md")
-        }
 
         // Falling back on GitHub commit history because there is no explicit changelog in extension
         return createUrl(URL_EXTENSION_COMMITS, pkgName, pkgFactory)
@@ -106,10 +103,6 @@ class AnimeExtensionDetailsScreenModel(
 
     fun getReadmeUrl(): String {
         val extension = state.value.extension ?: return ""
-
-        if (!extension.hasReadme) {
-            return "https://aniyomi.org/docs/faq/browse/extensions"
-        }
 
         val pkgName = extension.pkgName.substringAfter("eu.kanade.tachiyomi.animeextension.")
         val pkgFactory = extension.pkgFactory

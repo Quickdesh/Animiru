@@ -5,9 +5,13 @@ import eu.kanade.domain.download.anime.interactor.DeleteEpisodeDownload
 import eu.kanade.domain.entries.anime.interactor.GetAllAnime
 import eu.kanade.domain.entries.anime.interactor.SetAnimeViewerFlags
 import eu.kanade.domain.entries.anime.interactor.UpdateAnime
+import eu.kanade.domain.extension.anime.interactor.CreateAnimeExtensionRepo
+import eu.kanade.domain.extension.anime.interactor.DeleteAnimeExtensionRepo
 import eu.kanade.domain.extension.anime.interactor.GetAnimeExtensionLanguages
+import eu.kanade.domain.extension.anime.interactor.GetAnimeExtensionRepos
 import eu.kanade.domain.extension.anime.interactor.GetAnimeExtensionSources
 import eu.kanade.domain.extension.anime.interactor.GetAnimeExtensionsByType
+import eu.kanade.domain.extension.anime.interactor.TrustAnimeExtension
 import eu.kanade.domain.items.episode.interactor.SetSeenStatus
 import eu.kanade.domain.items.episode.interactor.SyncEpisodesWithSource
 import eu.kanade.domain.source.anime.interactor.GetAnimeSourcesWithFavoriteCount
@@ -176,5 +180,10 @@ class DomainModule : InjektModule {
         addFactory { GetCustomAnimeInfo(get()) }
         addFactory { SetCustomAnimeInfo(get()) }
         // <-- AM (CU)
+
+        addFactory { CreateAnimeExtensionRepo(get()) }
+        addFactory { DeleteAnimeExtensionRepo(get()) }
+        addFactory { GetAnimeExtensionRepos(get()) }
+        addFactory { TrustAnimeExtension(get()) }
     }
 }

@@ -16,8 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.HelpOutline
-import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.automirrored.outlined.Launch
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -38,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -75,6 +75,17 @@ fun AnimeExtensionDetailsScreen(
     onClickSource: (sourceId: Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val uriHandler = LocalUriHandler.current
+    val url = remember(state.extension) {
+        val regex = """https://raw.githubusercontent.com/(.+?)/(.+?)/.+""".toRegex()
+        regex.find(state.extension?.repoUrl.orEmpty())
+            ?.let {
+                val (user, repo) = it.destructured
+                "https://github.com/$user/$repo"
+            }
+            ?: state.extension?.repoUrl
+    }
+
     Scaffold(
         topBar = { scrollBehavior ->
             AppBar(
@@ -84,19 +95,14 @@ fun AnimeExtensionDetailsScreen(
                     AppBarActions(
                         actions = persistentListOf<AppBar.AppBarAction>().builder()
                             .apply {
-                                if (state.extension?.isUnofficial == false) {
+                                if (url != null) {
                                     add(
                                         AppBar.Action(
-                                            title = stringResource(MR.strings.whats_new),
-                                            icon = Icons.Outlined.History,
-                                            onClick = onClickWhatsNew,
-                                        ),
-                                    )
-                                    add(
-                                        AppBar.Action(
-                                            title = stringResource(MR.strings.action_faq_and_guides),
-                                            icon = Icons.AutoMirrored.Outlined.HelpOutline,
-                                            onClick = onClickReadme,
+                                            title = stringResource(MR.strings.action_open_repo),
+                                            icon = Icons.AutoMirrored.Outlined.Launch,
+                                            onClick = {
+                                                uriHandler.openUri(url)
+                                            },
                                         ),
                                     )
                                 }
@@ -159,10 +165,6 @@ private fun AnimeExtensionDetails(
         contentPadding = contentPadding,
     ) {
         when {
-            extension.isUnofficial ->
-                item {
-                    WarningBanner(MR.strings.unofficial_anime_extension_message)
-                }
             extension.isObsolete ->
                 item {
                     WarningBanner(MR.strings.obsolete_extension_message)

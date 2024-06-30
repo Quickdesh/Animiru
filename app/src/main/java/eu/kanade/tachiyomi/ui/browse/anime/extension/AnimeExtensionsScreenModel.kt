@@ -187,8 +187,8 @@ class AnimeExtensionsScreenModel(
         }
     }
 
-    fun trustSignature(signatureHash: String) {
-        extensionManager.trustSignature(signatureHash)
+    fun trustExtension(extension: AnimeExtension.Untrusted) {
+        extensionManager.trust(extension)
     }
 
     @Immutable

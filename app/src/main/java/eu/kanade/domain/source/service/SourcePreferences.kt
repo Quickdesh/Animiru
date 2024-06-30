@@ -36,7 +36,12 @@ class SourcePreferences(
         SetMigrateSorting.Direction.ASCENDING,
     )
 
-    fun trustedSignatures() = preferenceStore.getStringSet(Preference.appStateKey("trusted_signatures"), emptySet())
+    fun animeExtensionRepos() = preferenceStore.getStringSet("anime_extension_repos", emptySet())
+
+    fun trustedExtensions() = preferenceStore.getStringSet(
+        Preference.appStateKey("trusted_extensions"),
+        emptySet(),
+    )
 
     // Mixture Sources
 
