@@ -1,14 +1,16 @@
 package tachiyomi.domain.entries.anime.model
 
+import androidx.compose.runtime.Immutable
 import eu.kanade.tachiyomi.animesource.model.AnimeUpdateStrategy
 import eu.kanade.tachiyomi.animesource.model.SAnime
-import tachiyomi.core.preference.TriState
+import tachiyomi.core.common.preference.TriState
 import tachiyomi.domain.entries.anime.interactor.GetCustomAnimeInfo
 import uy.kohesive.injekt.injectLazy
 import java.io.Serializable
 import java.time.Instant
 import kotlin.math.pow
 
+@Immutable
 data class Anime(
     val id: Long,
     val source: Long,
@@ -34,9 +36,7 @@ data class Anime(
     val initialized: Boolean,
     val lastModifiedAt: Long,
     val favoriteModifiedAt: Long?,
-    // AM (SYNC) -->
     val version: Long,
-    // <-- AM (SYNC)
 ) : Serializable {
 
     // AM (CUSTOM_INFORMATION) -->
@@ -198,9 +198,7 @@ data class Anime(
             initialized = false,
             lastModifiedAt = 0L,
             favoriteModifiedAt = null,
-            // AM (SYNC) -->
             version = 0L,
-            // <-- AM (SYNC)
         )
 
         // AM (CUSTOM_INFORMATION) -->

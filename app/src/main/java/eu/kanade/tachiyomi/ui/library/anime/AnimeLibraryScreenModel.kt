@@ -40,19 +40,20 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.runBlocking
-import tachiyomi.core.i18n.stringResource
-import tachiyomi.core.preference.CheckboxState
-import tachiyomi.core.preference.TriState
-import tachiyomi.core.util.lang.compareToWithCollator
-import tachiyomi.core.util.lang.launchIO
-import tachiyomi.core.util.lang.launchNonCancellable
-import tachiyomi.core.util.lang.withIOContext
+import tachiyomi.core.common.i18n.stringResource
+import tachiyomi.core.common.preference.CheckboxState
+import tachiyomi.core.common.preference.TriState
+import tachiyomi.core.common.util.lang.compareToWithCollator
+import tachiyomi.core.common.util.lang.launchIO
+import tachiyomi.core.common.util.lang.launchNonCancellable
+import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.domain.category.anime.interactor.GetVisibleAnimeCategories
 import tachiyomi.domain.category.anime.interactor.SetAnimeCategories
 import tachiyomi.domain.category.model.Category
@@ -78,7 +79,7 @@ import tachiyomi.source.local.entries.anime.LocalAnimeSource
 import tachiyomi.source.local.entries.anime.isLocal
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
-import java.util.Collections
+import kotlin.random.Random
 
 /**
  * Typealias for the library anime, using the category as keys, and list of anime as values.
@@ -127,18 +128,16 @@ class AnimeLibraryScreenModel(
                     libraryPreferences.animeSortingMode().changes(),
                     ::Pair,
                 ),
-            ) { searchQuery, library, tracks, (loggedInTrackers, _), (groupType, sort) ->
+            ) { searchQuery, library, tracks, (trackingFilter, _), (groupType, sort) ->
                 library
                     .applyGrouping(groupType)
-                    .applySort(tracks, sort.takeIf { groupType != AnimeLibraryGroup.BY_DEFAULT })
+                    .applySort(tracks, trackingFilter.keys, sort.takeIf { groupType != AnimeLibraryGroup.BY_DEFAULT })
                     // <-- AM (GROUPING)
-                    .applyFilters(tracks, loggedInTrackers)
+                    .applyFilters(tracks, trackingFilter)
                     .mapValues { (_, value) ->
                         if (searchQuery != null) {
-                            // Filter query
                             value.filter { it.matches(searchQuery) }
                         } else {
-                            // Don't do anything
                             value
                         }
                     }
@@ -206,12 +205,9 @@ class AnimeLibraryScreenModel(
         // <-- AM (GROUPING)
     }
 
-    /**
-     * Applies library filters to the given map of anime.
-     */
     private suspend fun AnimeLibraryMap.applyFilters(
         trackMap: Map<Long, List<AnimeTrack>>,
-        loggedInTrackers: Map<Long, TriState>,
+        trackingFilter: Map<Long, TriState>,
     ): AnimeLibraryMap {
         val prefs = getAnimelibItemPreferencesFlow().first()
         val downloadedOnly = prefs.globalFilterDownloaded
@@ -226,10 +222,10 @@ class AnimeLibraryScreenModel(
         val filterCompleted = prefs.filterCompleted
         val filterIntervalCustom = prefs.filterIntervalCustom
 
-        val isNotLoggedInAnyTrack = loggedInTrackers.isEmpty()
+        val isNotLoggedInAnyTrack = trackingFilter.isEmpty()
 
-        val excludedTracks = loggedInTrackers.mapNotNull { if (it.value == TriState.ENABLED_NOT) it.key else null }
-        val includedTracks = loggedInTrackers.mapNotNull { if (it.value == TriState.ENABLED_IS) it.key else null }
+        val excludedTracks = trackingFilter.mapNotNull { if (it.value == TriState.ENABLED_NOT) it.key else null }
+        val includedTracks = trackingFilter.mapNotNull { if (it.value == TriState.ENABLED_IS) it.key else null }
         val trackFiltersIsIgnored = includedTracks.isEmpty() && excludedTracks.isEmpty()
 
         val filterFnDownloaded: (AnimeLibraryItem) -> Boolean = {
@@ -296,15 +292,13 @@ class AnimeLibraryScreenModel(
                 filterFnTracking(it)
         }
 
-        return this.mapValues { entry -> entry.value.fastFilter(filterFn) }
+        return mapValues { (_, value) -> value.fastFilter(filterFn) }
     }
 
-    /**
-     * Applies library sorting to the given map of anime.
-     */
     private fun AnimeLibraryMap.applySort(
         // Map<AnimeId, List<Track>>
         trackMap: Map<Long, List<AnimeTrack>>,
+        loggedInTrackerIds: Set<Long>,
         // AM (GROUPING) -->
         groupSort: AnimeLibrarySort? = null,
         // <-- AM (GROUPING)
@@ -315,7 +309,7 @@ class AnimeLibraryScreenModel(
 
         val defaultTrackerScoreSortValue = -1.0
         val trackerScores by lazy {
-            val trackerMap = trackerManager.loggedInTrackers().associateBy { e -> e.id }
+            val trackerMap = trackerManager.getAll(loggedInTrackerIds).associateBy { e -> e.id }
             trackMap.mapValues { entry ->
                 when {
                     entry.value.isEmpty() -> null
@@ -327,9 +321,9 @@ class AnimeLibraryScreenModel(
             }
         }
 
-        val sortFn: (AnimeLibraryItem, AnimeLibraryItem) -> Int = { i1, i2 ->
+        fun AnimeLibrarySort.comparator(): Comparator<AnimeLibraryItem> = Comparator { i1, i2 ->
             // AM (GROUPING) -->
-            val sort = groupSort ?: keys.find { it.id == i1.libraryAnime.category }!!.sort
+            val sort = groupSort ?: this
             // <-- AM (GROUPING)
             when (sort.type) {
                 AnimeLibrarySort.Type.Alphabetical -> {
@@ -344,8 +338,8 @@ class AnimeLibraryScreenModel(
                 AnimeLibrarySort.Type.UnseenCount -> when {
                     // Ensure unseen content comes first
                     i1.libraryAnime.unseenCount == i2.libraryAnime.unseenCount -> 0
-                    i1.libraryAnime.unseenCount == 0L -> if (sort.isAscending) 1 else -1
-                    i2.libraryAnime.unseenCount == 0L -> if (sort.isAscending) -1 else 1
+                    i1.libraryAnime.unseenCount == 0L -> if (this.isAscending) 1 else -1
+                    i2.libraryAnime.unseenCount == 0L -> if (this.isAscending) -1 else 1
                     else -> i1.libraryAnime.unseenCount.compareTo(i2.libraryAnime.unseenCount)
                 }
                 AnimeLibrarySort.Type.TotalEpisodes -> {
@@ -375,17 +369,22 @@ class AnimeLibraryScreenModel(
                 // )
                 // else -> i1.libraryAnime.unseenCount.compareTo(i2.libraryAnime.unseenCount)
                 // }
+                AnimeLibrarySort.Type.Random -> {
+                    error("Why Are We Still Here? Just To Suffer?")
+                }
             }
         }
 
-        return this.mapValues { entry ->
-            val comparator = if (keys.find { it.id == entry.key.id }!!.sort.isAscending) {
-                Comparator(sortFn)
-            } else {
-                Collections.reverseOrder(sortFn)
+        return mapValues { (key, value) ->
+            if (key.sort.type == AnimeLibrarySort.Type.Random) {
+                return@mapValues value.shuffled(Random(libraryPreferences.randomAnimeSortSeed().get()))
             }
 
-            entry.value.sortedWith(comparator.thenComparator(sortAlphabetically))
+            val comparator = key.sort.comparator()
+                .let { if (key.sort.isAscending) it else it.reversed() }
+                .thenComparator(sortAlphabetically)
+
+            value.sortedWith(comparator)
         }
     }
 
@@ -503,18 +502,17 @@ class AnimeLibraryScreenModel(
      * @return map of track id with the filter value
      */
     private fun getTrackingFilterFlow(): Flow<Map<Long, TriState>> {
-        val loggedInTrackers = trackerManager.loggedInTrackers()
-        return if (loggedInTrackers.isNotEmpty()) {
-            val prefFlows = loggedInTrackers
-                .map { libraryPreferences.filterTrackedAnime(it.id.toInt()).changes() }
-                .toTypedArray()
-            combine(*prefFlows) {
+        return trackerManager.loggedInTrackersFlow().flatMapLatest { loggedInTrackers ->
+            if (loggedInTrackers.isEmpty()) return@flatMapLatest flowOf(emptyMap())
+
+            val prefFlows = loggedInTrackers.map { tracker ->
+                libraryPreferences.filterTrackedAnime(tracker.id.toInt()).changes()
+            }
+            combine(prefFlows) {
                 loggedInTrackers
                     .mapIndexed { index, tracker -> tracker.id to it[index] }
                     .toMap()
             }
-        } else {
-            flowOf(emptyMap())
         }
     }
 

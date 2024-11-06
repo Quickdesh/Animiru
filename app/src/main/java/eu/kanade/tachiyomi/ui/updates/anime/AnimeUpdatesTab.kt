@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.ui.updates.anime
 
 import android.content.Context
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.FlipToBack
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.SelectAll
@@ -27,8 +28,9 @@ import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.player.settings.PlayerPreferences
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.collectLatest
-import tachiyomi.core.i18n.stringResource
-import tachiyomi.core.util.lang.launchIO
+import mihon.feature.upcoming.anime.UpcomingAnimeScreen
+import tachiyomi.core.common.i18n.stringResource
+import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 import uy.kohesive.injekt.injectLazy
@@ -157,6 +159,11 @@ fun Screen.animeUpdatesTab(
             )
         } else {
             persistentListOf(
+                AppBar.Action(
+                    title = stringResource(MR.strings.action_view_upcoming),
+                    icon = Icons.Outlined.CalendarMonth,
+                    onClick = { navigator.push(UpcomingAnimeScreen()) },
+                ),
                 AppBar.Action(
                     title = stringResource(MR.strings.action_update_library),
                     icon = Icons.Outlined.Refresh,

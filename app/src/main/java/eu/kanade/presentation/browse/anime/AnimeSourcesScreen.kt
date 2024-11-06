@@ -47,16 +47,16 @@ import tachiyomi.domain.source.anime.model.Pin
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.ScrollbarLazyColumn
 import tachiyomi.presentation.core.components.material.ExtendedFloatingActionButton
+import tachiyomi.presentation.core.components.material.SECONDARY_ALPHA
 import tachiyomi.presentation.core.components.material.Scaffold
-import tachiyomi.presentation.core.components.material.SecondaryItemAlpha
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.components.material.topSmallPaddingValues
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.EmptyScreen
 import tachiyomi.presentation.core.screens.LoadingScreen
 import tachiyomi.presentation.core.theme.header
-import tachiyomi.presentation.core.util.isScrollingDown
 import tachiyomi.presentation.core.util.plus
+import tachiyomi.presentation.core.util.shouldExpandFAB
 import tachiyomi.source.local.entries.anime.LocalAnimeSource
 
 @Composable
@@ -118,7 +118,7 @@ fun AnimeSourcesScreen(
                             text = { Text(text = stringResource(buttonText)) },
                             icon = { Icon(imageVector = buttonIcon, contentDescription = null) },
                             onClick = { toExtensionsScreen() },
-                            expanded = !(extensionsListState.isScrollingDown()) || updateCount != 0,
+                            expanded = (extensionsListState.shouldExpandFAB()) || updateCount != 0,
                         )
                     },
                 ) {
@@ -145,13 +145,13 @@ fun AnimeSourcesScreen(
                             when (model) {
                                 is AnimeSourceUiModel.Header -> {
                                     AnimeSourceHeader(
-                                        modifier = Modifier.animateItemPlacement(),
+                                        modifier = Modifier.animateItem(),
                                         language = model.language,
                                     )
                                 }
 
                                 is AnimeSourceUiModel.Item -> AnimeSourceItem(
-                                    modifier = Modifier.animateItemPlacement(),
+                                    modifier = Modifier.animateItem(),
                                     // AM (BROWSE) -->
                                     navigator = navigator,
                                     // <-- AM (BROWSE)
@@ -246,7 +246,7 @@ private fun AnimeSourcePinButton(
         MaterialTheme.colorScheme.primary
     } else {
         MaterialTheme.colorScheme.onBackground.copy(
-            alpha = SecondaryItemAlpha,
+            alpha = SECONDARY_ALPHA,
         )
     }
     val description = if (isPinned) MR.strings.action_unpin else MR.strings.action_pin
@@ -270,7 +270,8 @@ private fun AnimeSourceSettingsButton(
     navigator: Navigator,
     source: AnimeSource,
 ) {
-    IconButton(onClick = { navigator.push(AnimeExtensionDetailsScreen(source.installedExtension.pkgName)) }) {
+    val extension = source.installedExtension ?: return
+    IconButton(onClick = { navigator.push(AnimeExtensionDetailsScreen(extension.pkgName)) }) {
         Icon(
             imageVector = Icons.Outlined.Settings,
             tint = MaterialTheme.colorScheme.primary,

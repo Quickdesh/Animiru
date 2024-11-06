@@ -21,8 +21,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.core.view.children
-import coil.load
-import coil.transform.RoundedCornersTransformation
+import coil3.load
+import coil3.request.transformations
+import coil3.transform.RoundedCornersTransformation
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -36,7 +37,7 @@ import eu.kanade.tachiyomi.util.system.dpToPx
 import eu.kanade.tachiyomi.util.trimOrNull
 import eu.kanade.tachiyomi.widget.materialdialogs.setTextInput
 import kotlinx.coroutines.CoroutineScope
-import tachiyomi.core.i18n.stringResource
+import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.domain.entries.anime.model.Anime
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource

@@ -9,6 +9,7 @@ import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.animesource.model.AnimesPage
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.animesource.model.SEpisode
+import eu.kanade.tachiyomi.animesource.model.Video
 import eu.kanade.tachiyomi.util.lang.compareToCaseInsensitiveNaturalOrder
 import eu.kanade.tachiyomi.util.storage.toFFmpegString
 import kotlinx.coroutines.async
@@ -19,13 +20,13 @@ import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.json.encodeToStream
 import logcat.LogPriority
 import rx.Observable
-import tachiyomi.core.i18n.stringResource
+import tachiyomi.core.common.i18n.stringResource
+import tachiyomi.core.common.storage.extension
+import tachiyomi.core.common.storage.nameWithoutExtension
+import tachiyomi.core.common.util.lang.withIOContext
+import tachiyomi.core.common.util.system.logcat
 import tachiyomi.core.metadata.tachiyomi.AnimeDetails
 import tachiyomi.core.metadata.tachiyomi.EpisodeDetails
-import tachiyomi.core.storage.extension
-import tachiyomi.core.storage.nameWithoutExtension
-import tachiyomi.core.util.lang.withIOContext
-import tachiyomi.core.util.system.logcat
 import tachiyomi.domain.entries.anime.model.Anime
 import tachiyomi.domain.items.episode.service.EpisodeRecognition
 import tachiyomi.i18n.MR
@@ -48,8 +49,11 @@ actual class LocalAnimeSource(
 
     private val json: Json by injectLazy()
 
-    private val POPULAR_FILTERS = AnimeFilterList(AnimeOrderBy.Popular(context))
-    private val LATEST_FILTERS = AnimeFilterList(AnimeOrderBy.Latest(context))
+    @Suppress("PrivatePropertyName")
+    private val PopularFilters = AnimeFilterList(AnimeOrderBy.Popular(context))
+
+    @Suppress("PrivatePropertyName")
+    private val LatestFilters = AnimeFilterList(AnimeOrderBy.Latest(context))
 
     override val name = context.stringResource(MR.strings.local_anime_source)
 
@@ -62,16 +66,16 @@ actual class LocalAnimeSource(
     override val supportsLatest = true
 
     // Browse related
-    override suspend fun getPopularAnime(page: Int) = getSearchAnime(page, "", POPULAR_FILTERS)
+    override suspend fun getPopularAnime(page: Int) = getSearchAnime(page, "", PopularFilters)
 
-    override suspend fun getLatestUpdates(page: Int) = getSearchAnime(page, "", LATEST_FILTERS)
+    override suspend fun getLatestUpdates(page: Int) = getSearchAnime(page, "", LatestFilters)
 
     override suspend fun getSearchAnime(
         page: Int,
         query: String,
         filters: AnimeFilterList,
     ): AnimesPage = withIOContext {
-        val lastModifiedLimit = if (filters === LATEST_FILTERS) {
+        val lastModifiedLimit = if (filters === LatestFilters) {
             System.currentTimeMillis() - LATEST_THRESHOLD
         } else {
             0L
@@ -140,10 +144,10 @@ actual class LocalAnimeSource(
     // TODO: Should be replaced when Anime Extensions get to 1.15
 
     @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getPopularAnime"))
-    override fun fetchPopularAnime(page: Int) = fetchSearchAnime(page, "", POPULAR_FILTERS)
+    override fun fetchPopularAnime(page: Int) = fetchSearchAnime(page, "", PopularFilters)
 
     @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getLatestUpdates"))
-    override fun fetchLatestUpdates(page: Int) = fetchSearchAnime(page, "", LATEST_FILTERS)
+    override fun fetchLatestUpdates(page: Int) = fetchSearchAnime(page, "", LatestFilters)
 
     @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getSearchAnime"))
     override fun fetchSearchAnime(page: Int, query: String, filters: AnimeFilterList): Observable<AnimesPage> {
@@ -261,9 +265,7 @@ actual class LocalAnimeSource(
     override fun getFilterList() = AnimeFilterList(AnimeOrderBy.Popular(context))
 
     // Unused stuff
-    override suspend fun getVideoList(episode: SEpisode) = throw UnsupportedOperationException(
-        "Unused",
-    )
+    override suspend fun getVideoList(episode: SEpisode): List<Video> = throw UnsupportedOperationException("Unused")
 
     private fun updateCoverFromVideo(episode: SEpisode, anime: SAnime) {
         val tempFile = File.createTempFile(

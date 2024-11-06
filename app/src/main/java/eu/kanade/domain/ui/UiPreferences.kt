@@ -6,10 +6,10 @@ import eu.kanade.domain.ui.model.TabletUiMode
 import eu.kanade.domain.ui.model.ThemeMode
 import eu.kanade.tachiyomi.util.system.DeviceUtil
 import eu.kanade.tachiyomi.util.system.isDynamicColorAvailable
-import tachiyomi.core.preference.PreferenceStore
-import tachiyomi.core.preference.getEnum
-import java.text.DateFormat
-import java.text.SimpleDateFormat
+import tachiyomi.core.common.preference.PreferenceStore
+import tachiyomi.core.common.preference.getEnum
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.Locale
 
 class UiPreferences(
@@ -20,7 +20,11 @@ class UiPreferences(
 
     fun appTheme() = preferenceStore.getEnum(
         "pref_app_theme",
-        if (DeviceUtil.isDynamicColorAvailable) { AppTheme.MONET } else { AppTheme.DEFAULT },
+        if (DeviceUtil.isDynamicColorAvailable) {
+            AppTheme.MONET
+        } else {
+            AppTheme.DEFAULT
+        },
     )
 
     fun themeDarkAmoled() = preferenceStore.getBoolean("pref_theme_dark_amoled_key", false)
@@ -34,9 +38,9 @@ class UiPreferences(
     fun startScreen() = preferenceStore.getEnum("start_screen", StartScreen.ANIME)
 
     companion object {
-        fun dateFormat(format: String): DateFormat = when (format) {
-            "" -> DateFormat.getDateInstance(DateFormat.SHORT)
-            else -> SimpleDateFormat(format, Locale.getDefault())
+        fun dateFormat(format: String): DateTimeFormatter = when (format) {
+            "" -> DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT)
+            else -> DateTimeFormatter.ofPattern(format, Locale.getDefault())
         }
     }
 }

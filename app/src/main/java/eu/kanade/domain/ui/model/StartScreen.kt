@@ -11,11 +11,11 @@ enum class StartScreen(val titleRes: StringResource, val tab: Tab) {
     ANIME(MR.strings.label_library, AnimeLibraryTab),
 
     // AM (RECENTS) -->
-    UPDATES(MR.strings.label_recent_updates, RecentsTab(toHistory = false)),
-    HISTORY(MR.strings.label_recent_manga, RecentsTab(toHistory = true)),
+    UPDATES(MR.strings.label_recent_updates, RecentsTab),
+    HISTORY(MR.strings.label_recent_manga, RecentsTab),
 
     // <-- AM (RECENTS)
     // AM (BROWSE) -->
-    BROWSE(MR.strings.browse, BrowseTab),
+    BROWSE(MR.strings.browse, BrowseTab()),
     // <-- AM (BROWSE)
 }

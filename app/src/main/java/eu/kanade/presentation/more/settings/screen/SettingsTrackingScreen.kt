@@ -40,6 +40,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.icerock.moko.resources.StringResource
+import eu.kanade.domain.track.model.AutoTrackState
 import eu.kanade.domain.track.service.TrackPreferences
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.tachiyomi.data.track.EnhancedAnimeTracker
@@ -54,8 +55,10 @@ import eu.kanade.tachiyomi.util.system.openInBrowser
 import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
-import tachiyomi.core.util.lang.launchIO
-import tachiyomi.core.util.lang.withUIContext
+import kotlinx.collections.immutable.toPersistentMap
+import tachiyomi.core.common.i18n.stringResource
+import tachiyomi.core.common.util.lang.launchIO
+import tachiyomi.core.common.util.lang.withUIContext
 import tachiyomi.domain.source.anime.service.AnimeSourceManager
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.padding
@@ -86,6 +89,7 @@ object SettingsTrackingScreen : SearchableSettings {
         val trackPreferences = remember { Injekt.get<TrackPreferences>() }
         val trackerManager = remember { Injekt.get<TrackerManager>() }
         val animeSourceManager = remember { Injekt.get<AnimeSourceManager>() }
+        val autoTrackStatePref = trackPreferences.autoUpdateTrackOnMarkRead()
 
         var dialog by remember { mutableStateOf<Any?>(null) }
         dialog?.run {
@@ -134,6 +138,13 @@ object SettingsTrackingScreen : SearchableSettings {
             Preference.PreferenceItem.SwitchPreference(
                 pref = trackPreferences.showNextEpisodeAiringTime(),
                 title = stringResource(MR.strings.pref_show_next_episode_airing_time),
+            ),
+            Preference.PreferenceItem.ListPreference(
+                pref = trackPreferences.autoUpdateTrackOnMarkRead(),
+                title = stringResource(MR.strings.pref_auto_update_manga_on_mark_read),
+                entries = AutoTrackState.entries
+                    .associateWith { stringResource(it.titleRes) }
+                    .toPersistentMap(),
             ),
             Preference.PreferenceGroup(
                 title = stringResource(MR.strings.services),

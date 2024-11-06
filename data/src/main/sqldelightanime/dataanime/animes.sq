@@ -26,10 +26,8 @@ CREATE TABLE animes(
     calculate_interval INTEGER DEFAULT 0 NOT NULL,
     last_modified_at INTEGER NOT NULL DEFAULT 0,
     favorite_modified_at INTEGER,
-    -- AM (SYNC) -->
     version INTEGER NOT NULL DEFAULT 0,
     is_syncing INTEGER NOT NULL DEFAULT 0
-    -- <-- AM (SYNC)
 );
 
 CREATE INDEX animelib_favorite_index ON animes(favorite) WHERE favorite = 1;
@@ -52,7 +50,6 @@ BEGIN
   WHERE _id = new._id;
 END;
 
--- AM (SYNC) -->
 CREATE TRIGGER update_anime_version AFTER UPDATE ON animes
 BEGIN
     UPDATE animes SET version = version + 1
@@ -62,7 +59,6 @@ BEGIN
         new.favorite != old.favorite
     );
 END;
--- <-- AM (SYNC)
 
 getAnimeById:
 SELECT *
@@ -80,6 +76,15 @@ getFavorites:
 SELECT *
 FROM animes
 WHERE favorite = 1;
+
+getWatchedAnimeNotInLibrary:
+SELECT *
+FROM animes
+WHERE favorite = 0 AND _id IN (
+    SELECT DISTINCT episodes.anime_id
+    FROM episodes
+    WHERE seen = 1 OR last_second_seen != 0
+);
 
 getAllAnime:
 SELECT *
@@ -115,16 +120,22 @@ WHERE favorite = 1
 AND LOWER(title) = :title
 AND _id != :id;
 
+getUpcomingAnime:
+SELECT *
+FROM animes
+WHERE next_update >= :startOfDay
+AND favorite = 1
+AND status IN :statuses
+ORDER BY next_update ASC;
+
 resetViewerFlags:
 UPDATE animes
 SET viewer = 0;
 
--- AM (SYNC) -->
 resetIsSyncing:
 UPDATE animes
 SET is_syncing = 0
 WHERE is_syncing = 1;
--- <-- AM (SYNC)
 
 getSourceIdsWithNonLibraryAnime:
 SELECT source, COUNT(*) AS anime_count
@@ -136,11 +147,9 @@ deleteAnimesNotInLibraryBySourceIds:
 DELETE FROM animes
 WHERE favorite = 0 AND source IN :sourceIds;
 
--- AM (SYNC) -->
 insert:
 INSERT INTO animes(source, url, artist, author, description, genre, title, status, thumbnail_url, favorite, last_update, next_update, initialized, viewer, episode_flags, cover_last_modified, date_added, update_strategy, calculate_interval, last_modified_at, version)
 VALUES (:source, :url, :artist, :author, :description, :genre, :title, :status, :thumbnailUrl, :favorite, :lastUpdate, :nextUpdate, :initialized, :viewerFlags, :episodeFlags, :coverLastModified, :dateAdded, :updateStrategy, :calculateInterval, 0, :version);
--- <-- AM (SYNC)
 
 update:
 UPDATE animes SET
@@ -163,10 +172,8 @@ UPDATE animes SET
     date_added = coalesce(:dateAdded, date_added),
     update_strategy = coalesce(:updateStrategy, update_strategy),
     calculate_interval = coalesce(:calculateInterval, calculate_interval),
-    -- AM (SYNC) -->
     version = coalesce(:version, version),
     is_syncing = coalesce(:isSyncing, is_syncing)
-    -- <-- AM (SYNC)
 WHERE _id = :animeId;
 
 selectLastInsertedRowId:

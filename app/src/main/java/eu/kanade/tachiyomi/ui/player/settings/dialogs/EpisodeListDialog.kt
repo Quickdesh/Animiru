@@ -39,11 +39,13 @@ import eu.kanade.tachiyomi.util.lang.toRelativeString
 import tachiyomi.domain.entries.anime.model.Anime
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.VerticalFastScroller
-import tachiyomi.presentation.core.components.material.ReadItemAlpha
+import tachiyomi.presentation.core.components.material.DISABLED_ALPHA
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.stringResource
-import java.text.DateFormat
-import java.util.Date
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun EpisodeListDialog(
@@ -51,7 +53,7 @@ fun EpisodeListDialog(
     currentEpisodeIndex: Int,
     episodeList: List<Episode>,
     dateRelativeTime: Boolean,
-    dateFormat: DateFormat,
+    dateFormat: DateTimeFormatter,
     onBookmarkClicked: (Long?, Boolean) -> Unit,
     onEpisodeClicked: (Long?) -> Unit,
     onDismissRequest: () -> Unit,
@@ -92,7 +94,14 @@ fun EpisodeListDialog(
                     val date = episode.date_upload
                         .takeIf { it > 0L }
                         ?.let {
-                            Date(it).toRelativeString(context, dateRelativeTime, dateFormat)
+                            LocalDate.ofInstant(
+                                Instant.ofEpochMilli(it),
+                                ZoneId.systemDefault(),
+                            ).toRelativeString(
+                                context = context,
+                                relative = dateRelativeTime,
+                                dateFormat = dateFormat,
+                            )
                         } ?: ""
 
                     EpisodeListItem(
@@ -122,9 +131,9 @@ private fun EpisodeListItem(
     var textHeight by remember { mutableStateOf(0) }
 
     val bookmarkIcon = if (isBookmarked) Icons.Filled.Bookmark else Icons.Outlined.Bookmark
-    val bookmarkAlpha = if (isBookmarked) 1f else ReadItemAlpha
+    val bookmarkAlpha = if (isBookmarked) 1f else DISABLED_ALPHA
     val episodeColor = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-    val textAlpha = if (episode.seen) ReadItemAlpha else 1f
+    val textAlpha = if (episode.seen) DISABLED_ALPHA else 1f
     val textWeight = if (isCurrentEpisode) FontWeight.Bold else FontWeight.Normal
     val textStyle = if (isCurrentEpisode) FontStyle.Italic else FontStyle.Normal
 

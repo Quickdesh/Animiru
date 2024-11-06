@@ -2,7 +2,7 @@
 package eu.kanade.domain.connection.service
 
 import eu.kanade.tachiyomi.data.connection.Connection
-import tachiyomi.core.preference.PreferenceStore
+import tachiyomi.core.common.preference.PreferenceStore
 
 class ConnectionPreferences(
     private val preferenceStore: PreferenceStore,

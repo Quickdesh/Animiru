@@ -24,7 +24,7 @@ class AnimeBackupCreator(
     // <-- AM (CUSTOM_INFORMATION)
 ) {
 
-    suspend fun backupAnimes(animes: List<Anime>, options: BackupOptions): List<BackupAnime> {
+    suspend operator fun invoke(animes: List<Anime>, options: BackupOptions): List<BackupAnime> {
         return animes.map {
             backupAnime(it, options)
         }
@@ -102,9 +102,7 @@ private fun Anime.toBackupAnime(customAnimeInfo: CustomAnimeInfo?) =
         updateStrategy = this.updateStrategy,
         lastModifiedAt = this.lastModifiedAt,
         favoriteModifiedAt = this.favoriteModifiedAt,
-        // AM (SYNC) -->
         version = this.version,
-        // <-- AM (SYNC)
     ) // AM (CUSTOM_INFORMATION) -->
         .also { backupAnime ->
             customAnimeInfo?.let {

@@ -51,8 +51,10 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
-import tachiyomi.core.i18n.stringResource
-import tachiyomi.core.storage.displayablePath
+import logcat.LogPriority
+import tachiyomi.core.common.i18n.stringResource
+import tachiyomi.core.common.storage.displayablePath
+import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.backup.service.BackupPreferences
 import tachiyomi.domain.storage.service.StoragePreferences
 import tachiyomi.i18n.MR
@@ -98,7 +100,7 @@ object SettingsDataScreen : SearchableSettings {
 
     @Composable
     fun storageLocationPicker(
-        storageDirPref: tachiyomi.core.preference.Preference<String>,
+        storageDirPref: tachiyomi.core.common.preference.Preference<String>,
     ): ManagedActivityResultLauncher<Uri?, Uri?> {
         val context = LocalContext.current
 
@@ -109,7 +111,17 @@ object SettingsDataScreen : SearchableSettings {
                 val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
                     Intent.FLAG_GRANT_WRITE_URI_PERMISSION
 
-                context.contentResolver.takePersistableUriPermission(uri, flags)
+                // For some reason InkBook devices do not implement the SAF properly. Persistable URI grants do not
+                // work. However, simply retrieving the URI and using it works fine for these devices. Access is not
+                // revoked after the app is closed or the device is restarted.
+                // This also holds for some Samsung devices. Thus, we simply execute inside of a try-catch block and
+                // ignore the exception if it is thrown.
+                try {
+                    context.contentResolver.takePersistableUriPermission(uri, flags)
+                } catch (e: SecurityException) {
+                    logcat(LogPriority.ERROR, e)
+                    context.toast(MR.strings.file_picker_uri_permission_unsupported)
+                }
 
                 UniFile.fromUri(context, uri)?.let {
                     storageDirPref.set(it.uri.toString())
@@ -120,7 +132,7 @@ object SettingsDataScreen : SearchableSettings {
 
     @Composable
     fun storageLocationText(
-        storageDirPref: tachiyomi.core.preference.Preference<String>,
+        storageDirPref: tachiyomi.core.common.preference.Preference<String>,
     ): String {
         val context = LocalContext.current
         val storageDir by storageDirPref.collectAsState()

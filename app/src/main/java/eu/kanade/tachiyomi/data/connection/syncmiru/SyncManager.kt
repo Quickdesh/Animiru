@@ -10,7 +10,6 @@ import eu.kanade.tachiyomi.data.backup.create.BackupOptions
 import eu.kanade.tachiyomi.data.backup.models.Backup
 import eu.kanade.tachiyomi.data.backup.models.BackupAnime
 import eu.kanade.tachiyomi.data.backup.models.BackupEpisode
-import eu.kanade.tachiyomi.data.backup.models.BackupSerializer
 import eu.kanade.tachiyomi.data.backup.restore.BackupRestoreJob
 import eu.kanade.tachiyomi.data.backup.restore.RestoreOptions
 import eu.kanade.tachiyomi.data.backup.restore.restorers.AnimeRestorer
@@ -20,7 +19,7 @@ import eu.kanade.tachiyomi.data.connection.syncmiru.service.SyncYomiSyncService
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
 import logcat.LogPriority
-import tachiyomi.core.util.system.logcat
+import tachiyomi.core.common.util.system.logcat
 import tachiyomi.data.entries.anime.AnimeMapper.mapAnime
 import tachiyomi.data.handlers.anime.AnimeDatabaseHandler
 import tachiyomi.domain.category.anime.interactor.GetAnimeCategories
@@ -84,15 +83,16 @@ class SyncManager(
             // <-- AM (CUSTOM_INFORMATION)
         )
 
-        logcat(LogPriority.DEBUG) { "Begin create backup" }
+        log(LogPriority.DEBUG) { "Begin create backup" }
+        val backupAnime = backupCreator.backupAnimes(databaseAnime, backupOptions)
         val backup = Backup(
-            backupAnime = backupCreator.backupAnimes(databaseAnime, backupOptions),
+            backupAnime = backupAnime,
             backupAnimeCategories = backupCreator.backupAnimeCategories(backupOptions),
-            backupAnimeSources = backupCreator.backupAnimeSources(databaseAnime),
+            backupAnimeSources = backupCreator.backupAnimeSources(backupAnime),
             backupPreferences = backupCreator.backupAppPreferences(backupOptions),
             backupSourcePreferences = backupCreator.backupSourcePreferences(backupOptions),
         )
-        logcat(LogPriority.DEBUG) { "End create backup" }
+        log(LogPriority.DEBUG) { "End create backup" }
 
         // Create the SyncData object
         val syncData = SyncData(
@@ -122,7 +122,7 @@ class SyncManager(
         remoteBackup: Backup?,
     ) {
         if (remoteBackup == null) {
-            logcat(LogPriority.DEBUG) { "Skip restore due to network issues" }
+            log(LogPriority.DEBUG) { "Skip restore due to network issues" }
             // should we call showSyncError?
             return
         }
@@ -177,14 +177,15 @@ class SyncManager(
                 options = RestoreOptions(
                     appSettings = true,
                     sourceSettings = true,
-                    library = true,
+                    libraryEntries = true,
+                    extensionRepoSettings = true,
                 ),
             )
 
             // update the sync timestamp
             syncPreferences.lastSyncTimestamp().set(Date().time)
         } else {
-            logcat(LogPriority.ERROR) { "Failed to write sync data to file" }
+            log(LogPriority.ERROR) { "Failed to write sync data to file" }
         }
     }
 
@@ -192,7 +193,7 @@ class SyncManager(
         val cacheFile = File(context.cacheDir, "animiru_sync_data.proto.gz")
         return try {
             cacheFile.outputStream().use { output ->
-                output.write(ProtoBuf.encodeToByteArray(BackupSerializer, backup))
+                output.write(ProtoBuf.encodeToByteArray(Backup.serializer(), backup))
                 Uri.fromFile(cacheFile)
             }
         } catch (e: IOException) {

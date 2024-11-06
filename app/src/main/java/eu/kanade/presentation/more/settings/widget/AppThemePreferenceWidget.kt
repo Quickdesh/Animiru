@@ -48,7 +48,7 @@ import eu.kanade.presentation.entries.components.ItemCover
 import eu.kanade.presentation.theme.TachiyomiTheme
 import eu.kanade.tachiyomi.util.system.DeviceUtil
 import eu.kanade.tachiyomi.util.system.isDynamicColorAvailable
-import tachiyomi.core.preference.InMemoryPreferenceStore
+import tachiyomi.core.common.preference.InMemoryPreferenceStore
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.stringResource
@@ -223,13 +223,12 @@ fun AppThemePreviewItem(
             contentAlignment = Alignment.BottomCenter,
         ) {
             Surface(
-                tonalElevation = 3.dp,
+                color = MaterialTheme.colorScheme.surfaceContainer,
             ) {
                 Row(
                     modifier = Modifier
                         .height(32.dp)
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .padding(horizontal = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {

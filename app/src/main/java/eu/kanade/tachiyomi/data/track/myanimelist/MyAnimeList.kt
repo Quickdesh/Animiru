@@ -8,6 +8,7 @@ import eu.kanade.tachiyomi.data.track.AnimeTracker
 import eu.kanade.tachiyomi.data.track.BaseTracker
 import eu.kanade.tachiyomi.data.track.DeletableAnimeTracker
 import eu.kanade.tachiyomi.data.track.model.AnimeTrackSearch
+import eu.kanade.tachiyomi.data.track.myanimelist.dto.MALOAuth
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.serialization.encodeToString
@@ -58,15 +59,12 @@ class MyAnimeList(id: Long) :
         return listOf(WATCHING, COMPLETED, ON_HOLD, DROPPED, PLAN_TO_WATCH, REWATCHING)
     }
 
-    override fun getStatus(status: Long): StringResource? = when (status) {
-        READING -> MR.strings.reading
+    override fun getStatusForAnime(status: Long): StringResource? = when (status) {
         WATCHING -> MR.strings.watching
         COMPLETED -> MR.strings.completed
         ON_HOLD -> MR.strings.on_hold
         DROPPED -> MR.strings.dropped
-        PLAN_TO_READ -> MR.strings.plan_to_read
         PLAN_TO_WATCH -> MR.strings.plan_to_watch
-        REREADING -> MR.strings.repeating
         REWATCHING -> MR.strings.repeating_anime
         else -> null
     }
@@ -162,7 +160,7 @@ class MyAnimeList(id: Long) :
             val oauth = api.getAccessToken(authCode)
             interceptor.setAuth(oauth)
             val username = api.getCurrentUser()
-            saveCredentials(username, oauth.access_token)
+            saveCredentials(username, oauth.accessToken)
         } catch (e: Throwable) {
             logout()
         }
@@ -182,13 +180,13 @@ class MyAnimeList(id: Long) :
         trackPreferences.trackAuthExpired(this).set(true)
     }
 
-    fun saveOAuth(oAuth: OAuth?) {
+    fun saveOAuth(oAuth: MALOAuth?) {
         trackPreferences.trackToken(this).set(json.encodeToString(oAuth))
     }
 
-    fun loadOAuth(): OAuth? {
+    fun loadOAuth(): MALOAuth? {
         return try {
-            json.decodeFromString<OAuth>(trackPreferences.trackToken(this).get())
+            json.decodeFromString<MALOAuth>(trackPreferences.trackToken(this).get())
         } catch (e: Exception) {
             null
         }

@@ -1,6 +1,8 @@
 package eu.kanade.tachiyomi.data.track.jellyfin
 
 import eu.kanade.tachiyomi.data.database.models.anime.AnimeTrack
+import eu.kanade.tachiyomi.data.track.jellyfin.dto.JFItem
+import eu.kanade.tachiyomi.data.track.jellyfin.dto.JFItemList
 import eu.kanade.tachiyomi.data.track.model.AnimeTrackSearch
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.POST
@@ -11,11 +13,12 @@ import logcat.LogPriority
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
-import tachiyomi.core.util.lang.withIOContext
-import tachiyomi.core.util.system.logcat
+import tachiyomi.core.common.util.lang.withIOContext
+import tachiyomi.core.common.util.system.logcat
 import uy.kohesive.injekt.injectLazy
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Locale
 import kotlin.math.abs
 
 class JellyfinApi(
@@ -33,7 +36,7 @@ class JellyfinApi(
                 val track = with(json) {
                     client.newCall(GET(url))
                         .awaitSuccess()
-                        .parseAs<ItemDto>()
+                        .parseAs<JFItem>()
                         .toTrack()
                 }.apply { tracking_url = url }
 
@@ -49,7 +52,7 @@ class JellyfinApi(
             }
         }
 
-    private fun ItemDto.toTrack(): AnimeTrackSearch = AnimeTrackSearch.create(
+    private fun JFItem.toTrack(): AnimeTrackSearch = AnimeTrackSearch.create(
         trackId,
     ).also {
         it.title = name
@@ -64,7 +67,6 @@ class JellyfinApi(
     }
 
     private fun getEpisodesUrl(url: HttpUrl): HttpUrl {
-        val apiKey = url.queryParameter("api_key")!!
         val fragment = url.fragment!!
 
         return url.newBuilder().apply {
@@ -75,7 +77,6 @@ class JellyfinApi(
             addPathSegment("Shows")
             addPathSegment(fragment.split(",").last())
             addPathSegment("Episodes")
-            addQueryParameter("api_key", apiKey)
             addQueryParameter("seasonId", url.pathSegments.last())
             addQueryParameter("userId", url.pathSegments[1])
             addQueryParameter("Fields", "Overview,MediaSources")
@@ -88,7 +89,7 @@ class JellyfinApi(
         val episodes = with(json) {
             client.newCall(GET(episodesUrl))
                 .awaitSuccess()
-                .parseAs<ItemsDto>()
+                .parseAs<JFItemList>()
         }.items
 
         val totalEpisodes = episodes.last().indexNumber!!
@@ -130,7 +131,7 @@ class JellyfinApi(
             val episodes = with(json) {
                 client.newCall(GET(episodesUrl))
                     .awaitSuccess()
-                    .parseAs<ItemsDto>()
+                    .parseAs<JFItemList>()
             }.items
 
             episodes.firstOrNull {
@@ -139,7 +140,7 @@ class JellyfinApi(
         }
 
         if (itemId != null) {
-            val time = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(Date())
+            val time = DATE_FORMATTER.format(Date())
             val postUrl = httpUrl.newBuilder().apply {
                 fragment(null)
                 removePathSegment(3)
@@ -159,5 +160,9 @@ class JellyfinApi(
 
     private fun Long.equalsTo(other: Double): Boolean {
         return abs(this - other) < 0.001
+    }
+
+    companion object {
+        private val DATE_FORMATTER = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
     }
 }

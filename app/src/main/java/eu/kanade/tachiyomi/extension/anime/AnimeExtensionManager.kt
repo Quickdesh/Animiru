@@ -14,15 +14,19 @@ import eu.kanade.tachiyomi.extension.anime.util.AnimeExtensionInstallReceiver
 import eu.kanade.tachiyomi.extension.anime.util.AnimeExtensionInstaller
 import eu.kanade.tachiyomi.extension.anime.util.AnimeExtensionLoader
 import eu.kanade.tachiyomi.util.system.toast
-import kotlinx.coroutines.async
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import logcat.LogPriority
-import tachiyomi.core.util.lang.launchNow
-import tachiyomi.core.util.lang.withUIContext
-import tachiyomi.core.util.system.logcat
+import tachiyomi.core.common.util.lang.withUIContext
+import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.source.anime.model.StubAnimeSource
 import tachiyomi.i18n.MR
 import uy.kohesive.injekt.Injekt
@@ -45,8 +49,10 @@ class AnimeExtensionManager(
     private val trustExtension: TrustAnimeExtension = Injekt.get(),
 ) {
 
-    var isInitialized = false
-        private set
+    val scope = CoroutineScope(SupervisorJob())
+
+    private val _isInitialized = MutableStateFlow(false)
+    val isInitialized: StateFlow<Boolean> = _isInitialized.asStateFlow()
 
     /**
      * API where all the available anime extensions can be found.
@@ -60,28 +66,35 @@ class AnimeExtensionManager(
 
     private val iconMap = mutableMapOf<String, Drawable>()
 
-    private val _installedAnimeExtensionsFlow = MutableStateFlow(
-        emptyList<AnimeExtension.Installed>(),
-    )
-    val installedExtensionsFlow = _installedAnimeExtensionsFlow.asStateFlow()
+    private val installedExtensionsMapFlow = MutableStateFlow(emptyMap<String, AnimeExtension.Installed>())
+    val installedExtensionsFlow = installedExtensionsMapFlow.mapExtensions(scope)
+
+    private val availableExtensionsMapFlow = MutableStateFlow(emptyMap<String, AnimeExtension.Available>())
+    val availableExtensionsFlow = availableExtensionsMapFlow.mapExtensions(scope)
+
+    private val untrustedExtensionsMapFlow = MutableStateFlow(emptyMap<String, AnimeExtension.Untrusted>())
+    val untrustedExtensionsFlow = untrustedExtensionsMapFlow.mapExtensions(scope)
+
+    init {
+        initAnimeExtensions()
+        AnimeExtensionInstallReceiver(AnimeInstallationListener()).register(context)
+    }
 
     private var subLanguagesEnabledOnFirstRun = preferences.enabledLanguages().isSet()
 
     fun getAppIconForSource(sourceId: Long): Drawable? {
-        val pkgName = _installedAnimeExtensionsFlow.value.find { ext -> ext.sources.any { it.id == sourceId } }?.pkgName
-        if (pkgName != null) {
-            return iconMap[pkgName] ?: iconMap.getOrPut(pkgName) {
-                AnimeExtensionLoader.getAnimeExtensionPackageInfoFromPkgName(context, pkgName)!!.applicationInfo
-                    .loadIcon(context.packageManager)
+        val pkgName = installedExtensionsMapFlow.value.values
+            .find { ext ->
+                ext.sources.any { it.id == sourceId }
             }
-        }
-        return null
-    }
+            ?.pkgName
+            ?: return null
 
-    private val _availableExtensionsFlow = MutableStateFlow(
-        emptyList<AnimeExtension.Available>(),
-    )
-    val availableExtensionsFlow = _availableExtensionsFlow.asStateFlow()
+        return iconMap[pkgName] ?: iconMap.getOrPut(pkgName) {
+            AnimeExtensionLoader.getAnimeExtensionPackageInfoFromPkgName(context, pkgName)!!.applicationInfo!!
+                .loadIcon(context.packageManager)
+        }
+    }
 
     private var availableAnimeExtensionsSourcesData: Map<Long, StubAnimeSource> = emptyMap()
 
@@ -96,35 +109,25 @@ class AnimeExtensionManager(
 
     fun getSourceData(id: Long) = availableAnimeExtensionsSourcesData[id]
 
-    private val _untrustedExtensionsFlow = MutableStateFlow(
-        emptyList<AnimeExtension.Untrusted>(),
-    )
-    val untrustedExtensionsFlow = _untrustedExtensionsFlow.asStateFlow()
-
-    init {
-        initAnimeExtensions()
-        AnimeExtensionInstallReceiver(AnimeInstallationListener()).register(context)
-    }
-
     /**
      * Loads and registers the installed animeextensions.
      */
     private fun initAnimeExtensions() {
         val animeextensions = AnimeExtensionLoader.loadExtensions(context)
 
-        _installedAnimeExtensionsFlow.value = animeextensions
+        installedExtensionsMapFlow.value = animeextensions
             .filterIsInstance<AnimeLoadResult.Success>()
-            .map { it.extension }
+            .associate { it.extension.pkgName to it.extension }
 
-        _untrustedExtensionsFlow.value = animeextensions
+        untrustedExtensionsMapFlow.value = animeextensions
             .filterIsInstance<AnimeLoadResult.Untrusted>()
-            .map { it.extension }
+            .associate { it.extension.pkgName to it.extension }
 
-        isInitialized = true
+        _isInitialized.value = true
     }
 
     /**
-     * Finds the available anime extensions in the [api] and updates [availableExtensions].
+     * Finds the available anime extensions in the [api] and updates [availableExtensionsMapFlow].
      */
     suspend fun findAvailableExtensions() {
         val extensions: List<AnimeExtension.Available> = try {
@@ -137,7 +140,7 @@ class AnimeExtensionManager(
 
         enableAdditionalSubLanguages(extensions)
 
-        _availableExtensionsFlow.value = extensions
+        availableExtensionsMapFlow.value = extensions.associateBy { it.pkgName }
         updatedInstalledAnimeExtensionsStatuses(extensions)
         setupAvailableAnimeExtensionsSourcesDataMap(extensions)
     }
@@ -185,35 +188,32 @@ class AnimeExtensionManager(
             return
         }
 
-        val mutInstalledExtensions = _installedAnimeExtensionsFlow.value.toMutableList()
+        val installedExtensionsMap = installedExtensionsMapFlow.value.toMutableMap()
         var changed = false
 
-        for ((index, installedExt) in mutInstalledExtensions.withIndex()) {
-            val pkgName = installedExt.pkgName
+        for ((pkgName, extension) in installedExtensionsMap) {
             val availableExt = availableExtensions.find { it.pkgName == pkgName }
 
-            if (availableExt == null && !installedExt.isObsolete) {
-                mutInstalledExtensions[index] = installedExt.copy(isObsolete = true)
+            if (availableExt == null && !extension.isObsolete) {
+                installedExtensionsMap[pkgName] = extension.copy(isObsolete = true)
                 changed = true
             } else if (availableExt != null) {
-                val hasUpdate = installedExt.updateExists(availableExt)
-
-                if (installedExt.hasUpdate != hasUpdate) {
-                    mutInstalledExtensions[index] = installedExt.copy(
+                val hasUpdate = extension.updateExists(availableExt)
+                if (extension.hasUpdate != hasUpdate) {
+                    installedExtensionsMap[pkgName] = extension.copy(
                         hasUpdate = hasUpdate,
                         repoUrl = availableExt.repoUrl,
                     )
-                    changed = true
                 } else {
-                    mutInstalledExtensions[index] = installedExt.copy(
+                    installedExtensionsMap[pkgName] = extension.copy(
                         repoUrl = availableExt.repoUrl,
                     )
-                    changed = true
                 }
+                changed = true
             }
         }
         if (changed) {
-            _installedAnimeExtensionsFlow.value = mutInstalledExtensions
+            installedExtensionsMapFlow.value = installedExtensionsMap
         }
         updatePendingUpdatesCount()
     }
@@ -237,8 +237,7 @@ class AnimeExtensionManager(
      * @param extension The anime extension to be updated.
      */
     fun updateExtension(extension: AnimeExtension.Installed): Flow<InstallStep> {
-        val availableExt = _availableExtensionsFlow.value.find { it.pkgName == extension.pkgName }
-            ?: return emptyFlow()
+        val availableExt = availableExtensionsMapFlow.value[extension.pkgName] ?: return emptyFlow()
         return installExtension(availableExt)
     }
 
@@ -274,29 +273,16 @@ class AnimeExtensionManager(
      *
      * @param extension the extension to trust
      */
-    fun trust(extension: AnimeExtension.Untrusted) {
-        val untrustedPkgNames = _untrustedExtensionsFlow.value.map { it.pkgName }.toSet()
-        if (extension.pkgName !in untrustedPkgNames) return
+    suspend fun trust(extension: AnimeExtension.Untrusted) {
+        untrustedExtensionsMapFlow.value[extension.pkgName] ?: return
 
         trustExtension.trust(extension.pkgName, extension.versionCode, extension.signatureHash)
 
-        val nowTrustedExtensions = _untrustedExtensionsFlow.value
-            .filter { it.pkgName == extension.pkgName && it.versionCode == extension.versionCode }
-        _untrustedExtensionsFlow.value -= nowTrustedExtensions
+        untrustedExtensionsMapFlow.value -= extension.pkgName
 
-        launchNow {
-            nowTrustedExtensions
-                .map { extension ->
-                    async {
-                        AnimeExtensionLoader.loadExtensionFromPkgName(
-                            context,
-                            extension.pkgName,
-                        )
-                    }.await()
-                }
-                .filterIsInstance<AnimeLoadResult.Success>()
-                .forEach { registerNewExtension(it.extension) }
-        }
+        AnimeExtensionLoader.loadExtensionFromPkgName(context, extension.pkgName)
+            .let { it as? AnimeLoadResult.Success }
+            ?.let { registerNewExtension(it.extension) }
     }
 
     /**
@@ -305,7 +291,7 @@ class AnimeExtensionManager(
      * @param extension The anime extension to be registered.
      */
     private fun registerNewExtension(extension: AnimeExtension.Installed) {
-        _installedAnimeExtensionsFlow.value += extension
+        installedExtensionsMapFlow.value += extension
         // AM (BROWSE) -->
         updateSourceIdToExtensionMap()
         // <-- AM (BROWSE)
@@ -318,13 +304,7 @@ class AnimeExtensionManager(
      * @param extension The anime extension to be registered.
      */
     private fun registerUpdatedExtension(extension: AnimeExtension.Installed) {
-        val mutInstalledAnimeExtensions = _installedAnimeExtensionsFlow.value.toMutableList()
-        val oldAnimeExtension = mutInstalledAnimeExtensions.find { it.pkgName == extension.pkgName }
-        if (oldAnimeExtension != null) {
-            mutInstalledAnimeExtensions -= oldAnimeExtension
-        }
-        mutInstalledAnimeExtensions += extension
-        _installedAnimeExtensionsFlow.value = mutInstalledAnimeExtensions
+        installedExtensionsMapFlow.value += extension
         // AM (BROWSE) -->
         updateSourceIdToExtensionMap()
         // <-- AM (BROWSE)
@@ -337,14 +317,8 @@ class AnimeExtensionManager(
      * @param pkgName The package name of the uninstalled application.
      */
     private fun unregisterAnimeExtension(pkgName: String) {
-        val installedAnimeExtension = _installedAnimeExtensionsFlow.value.find { it.pkgName == pkgName }
-        if (installedAnimeExtension != null) {
-            _installedAnimeExtensionsFlow.value -= installedAnimeExtension
-        }
-        val untrustedAnimeExtension = _untrustedExtensionsFlow.value.find { it.pkgName == pkgName }
-        if (untrustedAnimeExtension != null) {
-            _untrustedExtensionsFlow.value -= untrustedAnimeExtension
-        }
+        installedExtensionsMapFlow.value -= pkgName
+        untrustedExtensionsMapFlow.value -= pkgName
     }
 
     /**
@@ -363,11 +337,9 @@ class AnimeExtensionManager(
         }
 
         override fun onExtensionUntrusted(extension: AnimeExtension.Untrusted) {
-            val installedExtension = _installedAnimeExtensionsFlow.value
-                .find { it.pkgName == extension.pkgName }
-                ?: return
-            _installedAnimeExtensionsFlow.value -= installedExtension
-            _untrustedExtensionsFlow.value += extension
+            installedExtensionsMapFlow.value -= extension.pkgName
+            untrustedExtensionsMapFlow.value += extension
+            updatePendingUpdatesCount()
         }
 
         override fun onPackageUninstalled(pkgName: String) {
@@ -391,17 +363,26 @@ class AnimeExtensionManager(
     private fun AnimeExtension.Installed.updateExists(
         availableExtension: AnimeExtension.Available? = null,
     ): Boolean {
-        val availableExt = availableExtension ?: _availableExtensionsFlow.value.find { it.pkgName == pkgName }
+        val availableExt = availableExtension
+            ?: availableExtensionsMapFlow.value[pkgName]
             ?: return false
 
         return (availableExt.versionCode > versionCode || availableExt.libVersion > libVersion)
     }
 
     private fun updatePendingUpdatesCount() {
-        val pendingUpdateCount = _installedAnimeExtensionsFlow.value.count { it.hasUpdate }
+        val pendingUpdateCount = installedExtensionsMapFlow.value.values.count { it.hasUpdate }
         preferences.animeExtensionUpdatesCount().set(pendingUpdateCount)
         if (pendingUpdateCount == 0) {
             ExtensionUpdateNotifier(context).dismiss()
         }
+    }
+
+    private operator fun <T : AnimeExtension> Map<String, T>.plus(extension: T) = plus(extension.pkgName to extension)
+
+    private fun <T : AnimeExtension> StateFlow<Map<String, T>>.mapExtensions(
+        scope: CoroutineScope,
+    ): StateFlow<List<T>> {
+        return map { it.values.toList() }.stateIn(scope, SharingStarted.Lazily, value.values.toList())
     }
 }

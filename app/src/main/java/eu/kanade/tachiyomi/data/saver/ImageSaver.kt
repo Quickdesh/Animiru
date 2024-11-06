@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.webkit.MimeTypeMap
 import androidx.annotation.RequiresApi
 import androidx.core.content.contentValuesOf
 import androidx.core.net.toUri
@@ -15,9 +16,9 @@ import eu.kanade.tachiyomi.util.storage.cacheImageDir
 import eu.kanade.tachiyomi.util.storage.getUriCompat
 import logcat.LogPriority
 import okio.IOException
-import tachiyomi.core.i18n.stringResource
-import tachiyomi.core.util.system.ImageUtil
-import tachiyomi.core.util.system.logcat
+import tachiyomi.core.common.i18n.stringResource
+import tachiyomi.core.common.util.system.ImageUtil
+import tachiyomi.core.common.util.system.logcat
 import tachiyomi.i18n.MR
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -65,21 +66,26 @@ class ImageSaver(
         filename: String,
         data: () -> InputStream,
     ): Uri {
-        val pictureDir =
+        val isMimeTypeSupported = MimeTypeMap.getSingleton().hasMimeType(type.mime)
+
+        val pictureDir = if (isMimeTypeSupported) {
             MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        } else {
+            MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        }
 
         val imageLocation = (image.location as Location.Pictures).relativePath
         val relativePath = listOf(
-            Environment.DIRECTORY_PICTURES,
+            if (isMimeTypeSupported) Environment.DIRECTORY_PICTURES else Environment.DIRECTORY_DOCUMENTS,
             context.stringResource(MR.strings.app_name),
             imageLocation,
         ).joinToString(File.separator)
 
         val contentValues = contentValuesOf(
-            MediaStore.Images.Media.RELATIVE_PATH to relativePath,
-            MediaStore.Images.Media.DISPLAY_NAME to image.name,
-            MediaStore.Images.Media.MIME_TYPE to type.mime,
-            MediaStore.Images.Media.DATE_MODIFIED to Instant.now().toEpochMilli(),
+            MediaStore.MediaColumns.RELATIVE_PATH to relativePath,
+            MediaStore.MediaColumns.DISPLAY_NAME to if (isMimeTypeSupported) image.name else filename,
+            MediaStore.MediaColumns.MIME_TYPE to type.mime,
+            MediaStore.MediaColumns.DATE_MODIFIED to Instant.now().epochSecond,
         )
 
         val picture = findUriOrDefault(relativePath, filename) {

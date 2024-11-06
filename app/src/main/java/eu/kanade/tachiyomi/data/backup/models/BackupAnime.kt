@@ -32,15 +32,13 @@ data class BackupAnime(
     // Bump by 100 for values that are not saved/implemented in 1.x but are used in 0.x
     @ProtoNumber(100) var favorite: Boolean = true,
     @ProtoNumber(101) var episodeFlags: Int = 0,
-    @ProtoNumber(102) var brokenHistory: List<BrokenBackupAnimeHistory> = emptyList(),
+    // @ProtoNumber(102) var brokenHistory, legacy history model with non-compliant proto number
     @ProtoNumber(103) var viewer_flags: Int = 0,
     @ProtoNumber(104) var history: List<BackupAnimeHistory> = emptyList(),
     @ProtoNumber(105) var updateStrategy: AnimeUpdateStrategy = AnimeUpdateStrategy.ALWAYS_UPDATE,
     @ProtoNumber(106) var lastModifiedAt: Long = 0,
     @ProtoNumber(107) var favoriteModifiedAt: Long? = null,
-    // AM (SYNC) -->
-    @ProtoNumber(108) var version: Long = 0,
-    // <-- AM (SYNC)
+    @ProtoNumber(109) var version: Long = 0,
 
     // AM (CUSTOM_INFORMATION) -->
     // Bump values by 200
@@ -72,9 +70,7 @@ data class BackupAnime(
             updateStrategy = this@BackupAnime.updateStrategy,
             lastModifiedAt = this@BackupAnime.lastModifiedAt,
             favoriteModifiedAt = this@BackupAnime.favoriteModifiedAt,
-            // AM (SYNC) -->
             version = this@BackupAnime.version,
-            // <-- AM (SYNC)
         )
     }
 

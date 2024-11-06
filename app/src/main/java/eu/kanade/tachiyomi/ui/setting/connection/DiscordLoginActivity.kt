@@ -67,7 +67,7 @@ private fun DiscordWebview(
                         (function() {
                             const wreq = (webpackChunkdiscord_app.push([[''], {}, e => { m = []; for (let c in e.c) m.push(e.c[c])}]), m)
                             webpackChunkdiscord_app.pop()
-                            const token = wreq.find(m => m?.exports?.default?.getToken !== void 0).exports.default.getToken(); 
+                            const token = wreq.find(m => m?.exports?.default?.getToken !== void 0).exports.default.getToken();
                             return token;
                         })()
                                     """.trimIndent(),

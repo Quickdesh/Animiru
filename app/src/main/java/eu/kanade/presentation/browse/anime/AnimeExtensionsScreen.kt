@@ -52,6 +52,7 @@ import eu.kanade.presentation.components.SearchToolbar
 import eu.kanade.presentation.components.WarningBanner
 import eu.kanade.presentation.entries.components.DotSeparatorNoSpaceText
 import eu.kanade.presentation.more.settings.screen.browse.AnimeExtensionReposScreen
+import eu.kanade.presentation.util.animateItemFastScroll
 import eu.kanade.presentation.util.rememberRequestPackageInstallsPermissionState
 import eu.kanade.tachiyomi.extension.InstallStep
 import eu.kanade.tachiyomi.extension.anime.model.AnimeExtension
@@ -126,7 +127,7 @@ fun AnimeExtensionScreen(
             onRefresh = onRefresh,
             indicatorPadding = contentPadding,
             // <-- AM (BROWSE)
-            enabled = { !state.isLoading },
+            enabled = !state.isLoading,
         ) {
             when {
                 state.isLoading -> LoadingScreen(Modifier.padding(contentPadding))
@@ -225,14 +226,14 @@ private fun AnimeExtensionContent(
                             }
                         ExtensionHeader(
                             textRes = header.textRes,
-                            modifier = Modifier.animateItemPlacement(),
+                            modifier = Modifier.animateItemFastScroll(),
                             action = action,
                         )
                     }
                     is AnimeExtensionUiModel.Header.Text -> {
                         ExtensionHeader(
                             text = header.text,
-                            modifier = Modifier.animateItemPlacement(),
+                            modifier = Modifier.animateItemFastScroll(),
                         )
                     }
                 }
@@ -251,12 +252,14 @@ private fun AnimeExtensionContent(
             ) { item ->
                 AnimeExtensionItem(
                     item = item,
-                    modifier = Modifier.animateItemPlacement(),
+                    modifier = Modifier.animateItemFastScroll(),
                     onClickItem = {
                         when (it) {
                             is AnimeExtension.Available -> onInstallExtension(it)
                             is AnimeExtension.Installed -> onOpenExtension(it)
-                            is AnimeExtension.Untrusted -> { trustState = it }
+                            is AnimeExtension.Untrusted -> {
+                                trustState = it
+                            }
                         }
                     },
                     onLongClickItem = onLongClickItem,
@@ -317,8 +320,8 @@ private fun AnimeExtensionItem(
 ) {
     val (extension, installStep) = item
     // AM (BROWSE) -->
-    if (extension is AnimeExtension.Installed) return
-    // <-- AM (BROWSE)a
+    if (extension is AnimeExtension.Installed && !extension.hasUpdate) return
+    // <-- AM (BROWSE)
     BaseBrowseItem(
         modifier = modifier
             .combinedClickable(

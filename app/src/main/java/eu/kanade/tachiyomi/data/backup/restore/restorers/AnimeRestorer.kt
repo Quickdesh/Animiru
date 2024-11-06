@@ -58,7 +58,7 @@ class AnimeRestorer(
             )
     }
 
-    suspend fun restoreAnime(
+    suspend fun restore(
         backupAnime: BackupAnime,
         backupCategories: List<BackupCategory>,
         // AM (CUSTOM_INFORMATION) -->
@@ -79,7 +79,7 @@ class AnimeRestorer(
                 episodes = backupAnime.episodes,
                 categories = backupAnime.categories,
                 backupCategories = backupCategories,
-                history = backupAnime.history + backupAnime.brokenHistory.map { it.toBackupHistory() },
+                history = backupAnime.history,
                 tracks = backupAnime.tracking,
                 // AM (CUSTOM_INFORMATION) -->
                 customInfo = customInfo,
@@ -93,9 +93,7 @@ class AnimeRestorer(
     }
 
     private suspend fun restoreExistingAnime(anime: Anime, dbAnime: Anime): Anime {
-        // AM (SYNC) -->
         return if (anime.version > dbAnime.version) {
-            // <-- AM (SYNC)
             updateAnime(dbAnime.copyFrom(anime).copy(id = dbAnime.id))
         } else {
             updateAnime(anime.copyFrom(dbAnime).copy(id = dbAnime.id))
@@ -114,9 +112,7 @@ class AnimeRestorer(
             ogStatus = newer.ogStatus,
             // <-- AM (CUSTOM_INFORMATION)
             initialized = this.initialized || newer.initialized,
-            // AM (SYNC) -->
             version = newer.version,
-            // <-- AM (SYNC)
         )
     }
 
@@ -143,10 +139,8 @@ class AnimeRestorer(
                 dateAdded = anime.dateAdded,
                 animeId = anime.id,
                 updateStrategy = anime.updateStrategy.let(AnimeUpdateStrategyColumnAdapter::encode),
-                // AM (SYNC) -->
                 version = anime.version,
                 isSyncing = 1,
-                // <-- AM (SYNC)
             )
         }
         return anime
@@ -158,9 +152,7 @@ class AnimeRestorer(
         return anime.copy(
             initialized = anime.description != null,
             id = insertAnime(anime),
-            // AM (SYNC) -->
             version = anime.version,
-            // <-- AM (SYNC)
         )
     }
 
@@ -210,7 +202,7 @@ class AnimeRestorer(
     }
 
     private fun Episode.forComparison() =
-        this.copy(id = 0L, animeId = 0L, dateFetch = 0L, dateUpload = 0L, lastModifiedAt = 0L)
+        this.copy(id = 0L, animeId = 0L, dateFetch = 0L, dateUpload = 0L, lastModifiedAt = 0L, version = 0L)
 
     private suspend fun insertNewEpisodes(episodes: List<Episode>) {
         handler.await(true) {
@@ -231,9 +223,7 @@ class AnimeRestorer(
                     episode.sourceOrder,
                     episode.dateFetch,
                     episode.dateUpload,
-                    // AM (SYNC) -->
                     episode.version,
-                    // <-- AM (SYNC)
                 )
             }
         }
@@ -259,10 +249,8 @@ class AnimeRestorer(
                     dateFetch = null,
                     dateUpload = null,
                     episodeId = episode.id,
-                    // AM (SYNC) -->
                     version = episode.version,
                     isSyncing = 0,
-                    // <-- AM (SYNC)
                 )
             }
         }
@@ -295,9 +283,7 @@ class AnimeRestorer(
                 coverLastModified = anime.coverLastModified,
                 dateAdded = anime.dateAdded,
                 updateStrategy = anime.updateStrategy,
-                // AM (SYNC) -->
                 version = anime.version,
-                // <-- AM (SYNC)
             )
             animesQueries.selectLastInsertedRowId()
         }

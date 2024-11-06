@@ -23,6 +23,8 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.domain.base.BasePreferences
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.tachiyomi.ui.player.JUST_PLAYER
+import eu.kanade.tachiyomi.ui.player.MPV_KT
+import eu.kanade.tachiyomi.ui.player.MPV_KT_PREVIEW
 import eu.kanade.tachiyomi.ui.player.MPV_PLAYER
 import eu.kanade.tachiyomi.ui.player.MPV_REMOTE
 import eu.kanade.tachiyomi.ui.player.MX_PLAYER
@@ -372,7 +374,7 @@ object SettingsPlayerScreen : SearchableSettings {
 
         val packageNames = supportedPlayers.map { it.packageName }
         val packageNamesReadable = supportedPlayers
-            .map { pm.getApplicationLabel(it.applicationInfo).toString() }
+            .map { pm.getApplicationLabel(it.applicationInfo!!).toString() }
 
         val packageNamesMap: Map<String, String> =
             packageNames.zip(packageNamesReadable)
@@ -445,6 +447,8 @@ val externalPlayers = listOf(
     MX_PLAYER_FREE,
     MX_PLAYER_PRO,
     VLC_PLAYER,
+    MPV_KT,
+    MPV_KT_PREVIEW,
     MPV_REMOTE,
     JUST_PLAYER,
     NEXT_PLAYER,

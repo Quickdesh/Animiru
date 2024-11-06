@@ -42,8 +42,8 @@ fun updateSourceIdToExtensionMap() {
         }
 }
 
-val AnimeSource.installedExtension: AnimeExtension.Installed
+val AnimeSource.installedExtension: AnimeExtension.Installed?
     get() {
-        return sourceIdToExtensionMap[id]!!
+        return sourceIdToExtensionMap[id]
     }
 // <-- AM (BROWSE)

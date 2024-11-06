@@ -18,6 +18,8 @@ import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
+import android.os.PowerManager
+import android.provider.Settings
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
@@ -65,6 +67,7 @@ import eu.kanade.tachiyomi.ui.player.settings.sheets.ScreenshotOptionsSheet
 import eu.kanade.tachiyomi.ui.player.settings.sheets.StreamsCatalogSheet
 import eu.kanade.tachiyomi.ui.player.settings.sheets.VideoChaptersSheet
 import eu.kanade.tachiyomi.ui.player.settings.sheets.subtitle.SubtitleSettingsSheet
+import eu.kanade.tachiyomi.ui.player.settings.sheets.subtitle.VideoFilters
 import eu.kanade.tachiyomi.ui.player.settings.sheets.subtitle.toHexString
 import eu.kanade.tachiyomi.ui.player.viewer.ACTION_MEDIA_CONTROL
 import eu.kanade.tachiyomi.ui.player.viewer.AspectState
@@ -79,16 +82,17 @@ import eu.kanade.tachiyomi.ui.player.viewer.PictureInPictureHandler
 import eu.kanade.tachiyomi.ui.player.viewer.PipState
 import eu.kanade.tachiyomi.ui.player.viewer.SeekState
 import eu.kanade.tachiyomi.ui.player.viewer.SetAsCover
+import eu.kanade.tachiyomi.ui.player.viewer.VideoDebanding
 import eu.kanade.tachiyomi.util.AniSkipApi
 import eu.kanade.tachiyomi.util.SkipType
 import eu.kanade.tachiyomi.util.Stamp
+import eu.kanade.tachiyomi.util.SubtitleSelect
 import eu.kanade.tachiyomi.util.system.LocaleHelper
 import eu.kanade.tachiyomi.util.system.powerManager
 import eu.kanade.tachiyomi.util.system.toShareIntent
 import eu.kanade.tachiyomi.util.system.toast
 import eu.kanade.tachiyomi.util.view.setComposeContent
 import `is`.xyz.mpv.MPVLib
-import `is`.xyz.mpv.Utils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.launchIn
@@ -97,13 +101,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import logcat.LogPriority
-import tachiyomi.core.i18n.stringResource
-import tachiyomi.core.util.lang.launchIO
-import tachiyomi.core.util.lang.launchNonCancellable
-import tachiyomi.core.util.lang.launchUI
-import tachiyomi.core.util.lang.withIOContext
-import tachiyomi.core.util.lang.withUIContext
-import tachiyomi.core.util.system.logcat
+import tachiyomi.core.common.i18n.stringResource
+import tachiyomi.core.common.util.lang.launchIO
+import tachiyomi.core.common.util.lang.launchNonCancellable
+import tachiyomi.core.common.util.lang.launchUI
+import tachiyomi.core.common.util.lang.withUIContext
+import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.storage.service.StorageManager
 import tachiyomi.i18n.MR
 import uy.kohesive.injekt.Injekt
@@ -114,6 +117,8 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.floor
 import kotlin.math.roundToInt
 import `is`.xyz.mpv.MPVView.Chapter as VideoChapter
 
@@ -145,6 +150,8 @@ class PlayerActivity : BaseActivity() {
                 addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
             }
         }
+
+        private const val MAX_BRIGHTNESS = 255F
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -603,6 +610,9 @@ class PlayerActivity : BaseActivity() {
 
         copyAssets(configDir)
 
+        MPVLib.setOptionString("sub-ass-force-margins", "yes")
+        MPVLib.setOptionString("sub-use-margins", "yes")
+
         player.initialize(
             configDir = configDir,
             cacheDir = applicationContext.cacheDir.path,
@@ -618,11 +628,12 @@ class PlayerActivity : BaseActivity() {
         MPVLib.setOptionString("keep-open", "always")
         MPVLib.setOptionString("ytdl", "no")
 
-        MPVLib.setOptionString("hwdec", playerPreferences.hwDec().get())
-        when (playerPreferences.deband().get()) {
-            1 -> MPVLib.setOptionString("vf", "gradfun=radius=12")
-            2 -> MPVLib.setOptionString("deband", "yes")
-            3 -> MPVLib.setOptionString("vf", "format=yuv420p")
+        MPVLib.setOptionString("hwdec", playerPreferences.hardwareDecoding().get().mpvValue)
+        when (playerPreferences.videoDebanding().get()) {
+            VideoDebanding.CPU -> MPVLib.setOptionString("vf", "gradfun=radius=12")
+            VideoDebanding.GPU -> MPVLib.setOptionString("deband", "yes")
+            VideoDebanding.YUV420P -> MPVLib.setOptionString("vf", "format=yuv420p")
+            VideoDebanding.DISABLED -> {}
         }
 
         val currentPlayerStatisticsPage = playerPreferences.playerStatisticsPage().get()
@@ -633,10 +644,18 @@ class PlayerActivity : BaseActivity() {
             )
         }
 
+        setVideoFilters()
+
         MPVLib.setOptionString("input-default-bindings", "yes")
 
         MPVLib.addLogObserver(playerObserver)
         player.addObserver(playerObserver)
+    }
+
+    private fun setVideoFilters() {
+        VideoFilters.entries.forEach {
+            MPVLib.setPropertyInt(it.mpvProperty, it.preference(playerPreferences).get())
+        }
     }
 
     private fun setupPlayerAudio() {
@@ -751,11 +770,39 @@ class PlayerActivity : BaseActivity() {
                 !playerPreferences.rememberPlayerBrightness().get()
 
         brightness = if (useDeviceBrightness) {
-            Utils.getScreenBrightness(this) ?: 0.5F
+            getCurrentBrightness()
         } else {
             playerPreferences.playerBrightnessValue().get()
         }
         verticalScrollLeft(0F)
+    }
+
+    private fun getMaxBrightness(): Float {
+        val powerManager = getSystemService(POWER_SERVICE) as? PowerManager ?: return MAX_BRIGHTNESS
+        val brightnessField = powerManager.javaClass.declaredFields.find {
+            it.name == "BRIGHTNESS_ON"
+        } ?: return MAX_BRIGHTNESS
+
+        brightnessField.isAccessible = true
+        return try {
+            (brightnessField.get(powerManager) as Int).toFloat()
+        } catch (e: IllegalAccessException) {
+            logcat(LogPriority.ERROR, e) { "Unable to access BRIGHTNESS_ON field" }
+            MAX_BRIGHTNESS
+        }
+    }
+
+    private fun getCurrentBrightness(): Float {
+        // check if window has brightness set
+        val lp = window.attributes
+        if (lp.screenBrightness >= 0f) return lp.screenBrightness
+        val resolver = contentResolver
+        return try {
+            Settings.System.getInt(resolver, Settings.System.SCREEN_BRIGHTNESS) / getMaxBrightness()
+        } catch (e: Settings.SettingNotFoundException) {
+            logcat(LogPriority.ERROR, e) { "Unable to get screen brightness" }
+            0.5F
+        }
     }
 
     @Suppress("DEPRECATION")
@@ -890,7 +937,7 @@ class PlayerActivity : BaseActivity() {
         AspectState.mode = if (aspectProperty != -1.0 && aspectProperty != (deviceWidth / deviceHeight).toDouble()) {
             AspectState.CUSTOM
         } else {
-            AspectState.get(playerPreferences.playerViewMode().get())
+            playerPreferences.aspectState().get()
         }
 
         playerControls.setViewMode(showText = false)
@@ -1468,7 +1515,6 @@ class PlayerActivity : BaseActivity() {
             playerControls.updateEpisodeText()
             playerControls.updatePlaylistButtons()
             playerControls.updateSpeedButton()
-            withIOContext { player.loadTracks() }
         }
     }
 
@@ -1696,73 +1742,39 @@ class PlayerActivity : BaseActivity() {
         }
     }
 
+    private val subtitleSelect = SubtitleSelect(playerPreferences)
+
+    private fun selectSubtitle(subtitleTracks: List<Track>, index: Int, embedded: Boolean = false) {
+        val offset = if (embedded) 0 else 1
+        streams.subtitle.index = index + offset
+        val tracks = player.tracks.getValue("sub")
+        val selectedLoadedTrack = tracks.firstOrNull {
+            it.name == subtitleTracks[index].url ||
+                it.mpvId.toString() == subtitleTracks[index].url
+        }
+        selectedLoadedTrack?.let { player.sid = it.mpvId }
+            ?: MPVLib.command(
+                arrayOf(
+                    "sub-add",
+                    subtitleTracks[index].url,
+                    "select",
+                    subtitleTracks[index].url,
+                ),
+            )
+    }
+
     // TODO: exception java.util.ConcurrentModificationException:
     //  UPDATE: MAY HAVE BEEN FIXED
     // at java.lang.Object java.util.ArrayList$Itr.next() (ArrayList.java:860)
     // at void eu.kanade.tachiyomi.ui.player.PlayerActivity.fileLoaded() (PlayerActivity.kt:1874)
     // at void eu.kanade.tachiyomi.ui.player.PlayerActivity.event(int) (PlayerActivity.kt:1566)
     // at void is.xyz.mpv.MPVLib.event(int) (MPVLib.java:86)
-    @SuppressLint("SourceLockedOrientationActivity")
     internal suspend fun fileLoaded() {
-        val localLangName = LocaleHelper.getSimpleLocaleDisplayName()
+        setMpvMediaTitle()
         clearTracks()
         player.loadTracks()
-        streams.subtitle.tracks += player.tracks.getOrElse("sub") { emptyList() }
-            .drop(1).map { track ->
-                Track(track.mpvId.toString(), track.name)
-            }.toTypedArray()
-        streams.audio.tracks += player.tracks.getOrElse("audio") { emptyList() }
-            .drop(1).map { track ->
-                Track(track.mpvId.toString(), track.name)
-            }.toTypedArray()
-        if (hadPreviousSubs) {
-            streams.subtitle.tracks.getOrNull(streams.subtitle.index)?.let { sub ->
-                MPVLib.command(arrayOf("sub-add", sub.url, "select", sub.url))
-            }
-        } else {
-            currentVideoList?.getOrNull(streams.quality.index)
-                ?.subtitleTracks?.let { tracks ->
-                    val langIndex = tracks.indexOfFirst {
-                        it.lang.contains(localLangName, true)
-                    }
-                    val requestedLanguage = if (langIndex == -1) 0 else langIndex
-                    tracks.getOrNull(requestedLanguage)?.let { sub ->
-                        hadPreviousSubs = true
-                        streams.subtitle.index = requestedLanguage + 1
-                        MPVLib.command(arrayOf("sub-add", sub.url, "select", sub.url))
-                    }
-                } ?: run {
-                val mpvSub = player.tracks.getOrElse("sub") { emptyList() }
-                    .firstOrNull { player.sid == it.mpvId }
-                streams.subtitle.index = mpvSub?.let {
-                    streams.subtitle.tracks.indexOfFirst { it.url == mpvSub.mpvId.toString() }
-                }?.coerceAtLeast(0) ?: 0
-            }
-        }
-        if (hadPreviousAudio) {
-            streams.audio.tracks.getOrNull(streams.audio.index)?.let { audio ->
-                MPVLib.command(arrayOf("audio-add", audio.url, "select", audio.url))
-            }
-        } else {
-            currentVideoList?.getOrNull(streams.quality.index)
-                ?.audioTracks?.let { tracks ->
-                    val langIndex = tracks.indexOfFirst {
-                        it.lang.contains(localLangName)
-                    }
-                    val requestedLanguage = if (langIndex == -1) 0 else langIndex
-                    tracks.getOrNull(requestedLanguage)?.let { audio ->
-                        hadPreviousAudio = true
-                        streams.audio.index = requestedLanguage + 1
-                        MPVLib.command(arrayOf("audio-add", audio.url, "select", audio.url))
-                    }
-                } ?: run {
-                val mpvAudio = player.tracks.getOrElse("audio") { emptyList() }
-                    .firstOrNull { player.aid == it.mpvId }
-                streams.audio.index = mpvAudio?.let {
-                    streams.audio.tracks.indexOfFirst { it.url == mpvAudio.mpvId.toString() }
-                }?.coerceAtLeast(0) ?: 0
-            }
-        }
+        setupSubtitleTracks()
+        setupAudioTracks()
 
         viewModel.viewModelScope.launchUI {
             if (playerPreferences.adjustOrientationVideoDimensions().get()) {
@@ -1794,6 +1806,88 @@ class PlayerActivity : BaseActivity() {
                 }
             }
         }
+    }
+
+    private fun setupSubtitleTracks() {
+        streams.subtitle.tracks += player.tracks.getOrElse("sub") { emptyList() }
+            .drop(1).map { track ->
+                Track(track.mpvId.toString(), track.name)
+            }.toTypedArray()
+        if (hadPreviousSubs) {
+            streams.subtitle.tracks.getOrNull(streams.subtitle.index)?.let { sub ->
+                MPVLib.command(arrayOf("sub-add", sub.url, "select", sub.url))
+            }
+            return
+        }
+        val subtitleTracks = currentVideoList?.getOrNull(streams.quality.index)
+            ?.subtitleTracks?.takeIf { it.isNotEmpty() }
+
+        subtitleTracks?.let { tracks ->
+            val preferredIndex = subtitleSelect.getPreferredSubtitleIndex(tracks) ?: 0
+            hadPreviousSubs = true
+            selectSubtitle(tracks, preferredIndex)
+        } ?: let {
+            val tracks = streams.subtitle.tracks.toList()
+            val preferredIndex = subtitleSelect.getPreferredSubtitleIndex(tracks)
+                ?: let {
+                    val mpvSub = player.tracks["sub"]?.toTypedArray()?.firstOrNull { player.sid == it.mpvId }
+                    mpvSub?.let {
+                        streams.subtitle.tracks.indexOfFirst { it.url == mpvSub.mpvId.toString() }
+                    }?.coerceAtLeast(0) ?: 0
+                }
+            selectSubtitle(tracks, preferredIndex, embedded = true)
+        }
+    }
+
+    private fun setupAudioTracks() {
+        val localLangName = LocaleHelper.getSimpleLocaleDisplayName()
+
+        streams.audio.tracks += player.tracks.getOrElse("audio") { emptyList() }
+            .drop(1).map { track ->
+                Track(track.mpvId.toString(), track.name)
+            }.toTypedArray()
+
+        if (hadPreviousAudio) {
+            streams.audio.tracks.getOrNull(streams.audio.index)?.let { audio ->
+                MPVLib.command(arrayOf("audio-add", audio.url, "select", audio.url))
+            }
+        } else {
+            currentVideoList?.getOrNull(streams.quality.index)
+                ?.audioTracks?.let { tracks ->
+                    val langIndex = tracks.indexOfFirst {
+                        it.lang.contains(localLangName)
+                    }
+                    val requestedLanguage = if (langIndex == -1) 0 else langIndex
+                    tracks.getOrNull(requestedLanguage)?.let { audio ->
+                        hadPreviousAudio = true
+                        streams.audio.index = requestedLanguage + 1
+                        MPVLib.command(arrayOf("audio-add", audio.url, "select", audio.url))
+                    }
+                } ?: run {
+                val mpvAudio = player.tracks["audio"]?.toTypedArray()?.firstOrNull { player.aid == it.mpvId }
+                streams.audio.index = mpvAudio?.let {
+                    streams.audio.tracks.indexOfFirst { it.url == mpvAudio.mpvId.toString() }
+                }?.coerceAtLeast(0) ?: 0
+            }
+        }
+    }
+
+    private fun setMpvMediaTitle() {
+        val anime = viewModel.currentAnime ?: return
+        val episode = viewModel.currentEpisode ?: return
+
+        val epNumber = episode.episode_number.let { number ->
+            if (ceil(number) == floor(number)) number.toInt() else number
+        }.toString().padStart(2, '0')
+
+        val title = stringResource(
+            MR.strings.mpv_media_title,
+            anime.title,
+            epNumber,
+            episode.name,
+        )
+
+        MPVLib.setPropertyString("force-media-title", title)
     }
 
     private var aniskipStamps: List<Stamp> = emptyList()

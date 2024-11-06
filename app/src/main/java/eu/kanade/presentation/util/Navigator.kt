@@ -1,6 +1,5 @@
 package eu.kanade.presentation.util
 
-import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibilityScope
@@ -28,16 +27,13 @@ import soup.compose.material.motion.animation.rememberSlideDistance
 /**
  * For invoking back press to the parent activity
  */
-@SuppressLint("ComposeCompositionLocalUsage")
 val LocalBackPress: ProvidableCompositionLocal<(() -> Unit)?> = staticCompositionLocalOf { null }
 
-abstract class Tab : cafe.adriel.voyager.navigator.tab.Tab {
-
-    override val key: ScreenKey = uniqueScreenKey
-    open suspend fun onReselect(navigator: Navigator) {}
+interface Tab : cafe.adriel.voyager.navigator.tab.Tab {
+    suspend fun onReselect(navigator: Navigator) {}
 
     // AM (TAB_HOLD) -->
-    open suspend fun onReselectHold(navigator: Navigator) {}
+    suspend fun onReselectHold(navigator: Navigator) {}
     // <-- AM (TAB_HOLD)
 }
 
@@ -63,7 +59,10 @@ interface AssistContentScreen {
 }
 
 @Composable
-fun DefaultNavigatorScreenTransition(navigator: Navigator) {
+fun DefaultNavigatorScreenTransition(
+    navigator: Navigator,
+    modifier: Modifier = Modifier,
+) {
     val slideDistance = rememberSlideDistance()
     ScreenTransition(
         navigator = navigator,
@@ -73,6 +72,7 @@ fun DefaultNavigatorScreenTransition(navigator: Navigator) {
                 slideDistance = slideDistance,
             )
         },
+        modifier = modifier,
     )
 }
 

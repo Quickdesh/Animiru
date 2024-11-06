@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.compose.animation.graphics.res.animatedVectorResource
 import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -28,18 +29,18 @@ import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.player.settings.PlayerPreferences
 import eu.kanade.tachiyomi.ui.updates.anime.animeUpdatesTab
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.receiveAsFlow
-import tachiyomi.core.i18n.stringResource
-import tachiyomi.core.util.lang.launchIO
+import tachiyomi.core.common.i18n.stringResource
+import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.domain.items.episode.model.Episode
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 import uy.kohesive.injekt.injectLazy
 
-data class RecentsTab(
-    private val toHistory: Boolean,
-) : Tab() {
+data object RecentsTab : Tab {
 
     override val options: TabOptions
         @Composable
@@ -61,6 +62,12 @@ data class RecentsTab(
         navigator.push(DownloadQueueScreen)
     }
 
+    private val switchToHistoryTabChannel = Channel<Unit>(1, BufferOverflow.DROP_OLDEST)
+
+    fun showHistory() {
+        switchToHistoryTabChannel.trySend(Unit)
+    }
+
     @Composable
     override fun Content() {
         val context = LocalContext.current
@@ -68,17 +75,22 @@ data class RecentsTab(
         val animeHistoryScreenModel = rememberScreenModel { AnimeHistoryScreenModel() }
         val animeSearchQuery by animeHistoryScreenModel.query.collectAsState()
 
+        val tabs = persistentListOf(animeUpdatesTab(context), animeHistoryTab(context))
+        val state = rememberPagerState { tabs.size }
+
         TabbedScreen(
             titleRes = MR.strings.label_recent_recents,
-            tabs = persistentListOf(
-                animeUpdatesTab(context),
-                animeHistoryTab(context),
-            ),
-            startIndex = 1.takeIf { toHistory },
+            tabs = tabs,
+            state = state,
             // Compatibility with hardcoded aniyomi code
             mangaSearchQuery = animeSearchQuery,
             onChangeMangaSearchQuery = animeHistoryScreenModel::search,
         )
+
+        LaunchedEffect(Unit) {
+            switchToHistoryTabChannel.receiveAsFlow()
+                .collectLatest { state.scrollToPage(1) }
+        }
 
         LaunchedEffect(Unit) {
             // AM (DISCORD_RPC) -->

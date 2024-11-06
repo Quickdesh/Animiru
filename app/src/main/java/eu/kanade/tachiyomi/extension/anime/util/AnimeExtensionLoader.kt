@@ -17,11 +17,12 @@ import eu.kanade.tachiyomi.extension.anime.model.AnimeExtension
 import eu.kanade.tachiyomi.extension.anime.model.AnimeLoadResult
 import eu.kanade.tachiyomi.util.lang.Hash
 import eu.kanade.tachiyomi.util.storage.copyAndSetReadOnlyTo
+import eu.kanade.tachiyomi.util.system.ChildFirstPathClassLoader
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import logcat.LogPriority
-import tachiyomi.core.util.system.logcat
+import tachiyomi.core.common.util.system.logcat
 import uy.kohesive.injekt.injectLazy
 import java.io.File
 
@@ -144,7 +145,7 @@ internal object AnimeExtensionLoader {
 
                 val path = it.absolutePath
                 pkgManager.getPackageArchiveInfo(path, PACKAGE_FLAGS)
-                    ?.apply { applicationInfo.fixBasePaths(path) }
+                    ?.apply { applicationInfo!!.fixBasePaths(path) }
             }
             ?.filter { isPackageAnExtension(it) }
             ?.map { AnimeExtensionInfo(packageInfo = it, isShared = false) }
@@ -176,7 +177,7 @@ internal object AnimeExtensionLoader {
      * Attempts to load an extension from the given package name. It checks if the extension
      * contains the required feature flag before trying to load it.
      */
-    fun loadExtensionFromPkgName(context: Context, pkgName: String): AnimeLoadResult {
+    suspend fun loadExtensionFromPkgName(context: Context, pkgName: String): AnimeLoadResult {
         val extensionPackage = getAnimeExtensionInfoFromPkgName(context, pkgName)
         if (extensionPackage == null) {
             logcat(LogPriority.ERROR) { "Extension package is not found ($pkgName)" }
@@ -201,7 +202,7 @@ internal object AnimeExtensionLoader {
             )
                 ?.takeIf { isPackageAnExtension(it) }
                 ?.let {
-                    it.applicationInfo.fixBasePaths(privateExtensionFile.absolutePath)
+                    it.applicationInfo!!.fixBasePaths(privateExtensionFile.absolutePath)
                     AnimeExtensionInfo(
                         packageInfo = it,
                         isShared = false,
@@ -233,11 +234,11 @@ internal object AnimeExtensionLoader {
      * @param context The application context.
      * @param extensionInfo The extension to load.
      */
-    private fun loadExtension(context: Context, extensionInfo: AnimeExtensionInfo): AnimeLoadResult {
+    private suspend fun loadExtension(context: Context, extensionInfo: AnimeExtensionInfo): AnimeLoadResult {
         val pkgManager = context.packageManager
 
         val pkgInfo = extensionInfo.packageInfo
-        val appInfo = pkgInfo.applicationInfo
+        val appInfo = pkgInfo.applicationInfo!!
         val pkgName = pkgInfo.packageName
 
         val extName = pkgManager.getApplicationLabel(appInfo).toString().substringAfter("Aniyomi: ")
@@ -263,7 +264,7 @@ internal object AnimeExtensionLoader {
         if (signatures.isNullOrEmpty()) {
             logcat(LogPriority.WARN) { "Package $pkgName isn't signed" }
             return AnimeLoadResult.Error
-        } else if (!trustExtension.isTrusted(pkgInfo, signatures.last())) {
+        } else if (!trustExtension.isTrusted(pkgInfo, signatures)) {
             val extension = AnimeExtension.Untrusted(
                 extName,
                 pkgName,
@@ -283,7 +284,7 @@ internal object AnimeExtensionLoader {
         }
 
         val classLoader = try {
-            PathClassLoader(appInfo.sourceDir, null, context.classLoader)
+            ChildFirstPathClassLoader(appInfo.sourceDir, null, context.classLoader)
         } catch (e: Exception) {
             logcat(LogPriority.ERROR, e) { "Extension load error: $extName ($pkgName)" }
             return AnimeLoadResult.Error
@@ -305,6 +306,26 @@ internal object AnimeExtensionLoader {
                         is AnimeSource -> listOf(obj)
                         is AnimeSourceFactory -> obj.createSources()
                         else -> throw Exception("Unknown source class type: ${obj.javaClass}")
+                    }
+                } catch (e: LinkageError) {
+                    try {
+                        val fallBackClassLoader = PathClassLoader(appInfo.sourceDir, null, context.classLoader)
+                        when (
+                            val obj = Class.forName(
+                                it,
+                                false,
+                                fallBackClassLoader,
+                            ).getDeclaredConstructor().newInstance()
+                        ) {
+                            is AnimeSource -> {
+                                listOf(obj)
+                            }
+                            is AnimeSourceFactory -> obj.createSources()
+                            else -> throw Exception("Unknown source class type: ${obj.javaClass}")
+                        }
+                    } catch (e: Throwable) {
+                        logcat(LogPriority.ERROR, e) { "Extension load error: $extName ($it)" }
+                        return AnimeLoadResult.Error
                     }
                 } catch (e: Throwable) {
                     logcat(LogPriority.ERROR, e) { "Extension load error: $extName ($it)" }
@@ -376,7 +397,7 @@ internal object AnimeExtensionLoader {
      */
     private fun getSignatures(pkgInfo: PackageInfo): List<String>? {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            val signingInfo = pkgInfo.signingInfo
+            val signingInfo = pkgInfo.signingInfo!!
             if (signingInfo.hasMultipleSigners()) {
                 signingInfo.apkContentsSigners
             } else {

@@ -17,6 +17,8 @@ interface AnimeRepository {
 
     suspend fun getAnimeFavorites(): List<Anime>
 
+    suspend fun getWatchedAnimeNotInLibrary(): List<Anime>
+
     suspend fun getLibraryAnime(): List<LibraryAnime>
 
     fun getLibraryAnimeAsFlow(): Flow<List<LibraryAnime>>
@@ -24,6 +26,8 @@ interface AnimeRepository {
     fun getAnimeFavoritesBySourceId(sourceId: Long): Flow<List<Anime>>
 
     suspend fun getDuplicateLibraryAnime(id: Long, title: String): List<Anime>
+
+    suspend fun getUpcomingAnime(statuses: Set<Long>): Flow<List<Anime>>
 
     suspend fun resetAnimeViewerFlags(): Boolean
 

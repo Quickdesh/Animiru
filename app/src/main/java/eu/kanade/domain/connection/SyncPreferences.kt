@@ -3,8 +3,8 @@ package eu.kanade.domain.connection
 
 import eu.kanade.domain.connection.models.SyncSettings
 import eu.kanade.tachiyomi.data.connection.syncmiru.models.SyncTriggerOptions
-import tachiyomi.core.preference.Preference
-import tachiyomi.core.preference.PreferenceStore
+import tachiyomi.core.common.preference.Preference
+import tachiyomi.core.common.preference.PreferenceStore
 import java.util.UUID
 
 class SyncPreferences(

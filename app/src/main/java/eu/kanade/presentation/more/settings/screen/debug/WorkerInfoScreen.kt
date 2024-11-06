@@ -42,12 +42,14 @@ import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.plus
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
-import java.util.Date
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 class WorkerInfoScreen : Screen() {
 
     companion object {
-        const val title = "Worker info"
+        const val TITLE = "Worker info"
     }
 
     @Composable
@@ -63,7 +65,7 @@ class WorkerInfoScreen : Screen() {
         Scaffold(
             topBar = {
                 AppBar(
-                    title = title,
+                    title = TITLE,
                     navigateUp = navigator::pop,
                     actions = {
                         AppBarActions(
@@ -73,7 +75,7 @@ class WorkerInfoScreen : Screen() {
                                     icon = Icons.Default.ContentCopy,
                                     onClick = {
                                         context.copyToClipboard(
-                                            title,
+                                            TITLE,
                                             enqueued + finished + running,
                                         )
                                     },
@@ -151,13 +153,16 @@ class WorkerInfoScreen : Screen() {
                     }
                     appendLine("State: ${workInfo.state}")
                     if (workInfo.state == WorkInfo.State.ENQUEUED) {
-                        appendLine(
-                            "Next scheduled run: ${Date(workInfo.nextScheduleTimeMillis).toDateTimestampString(
+                        val timestamp = LocalDateTime.ofInstant(
+                            Instant.ofEpochMilli(workInfo.nextScheduleTimeMillis),
+                            ZoneId.systemDefault(),
+                        )
+                            .toDateTimestampString(
                                 UiPreferences.dateFormat(
                                     Injekt.get<UiPreferences>().dateFormat().get(),
                                 ),
-                            )}",
-                        )
+                            )
+                        appendLine("Next scheduled run: $timestamp")
                         appendLine("Attempt #${workInfo.runAttemptCount + 1}")
                     }
                     appendLine()

@@ -28,11 +28,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
-import com.google.accompanist.web.AccompanistWebViewClient
-import com.google.accompanist.web.LoadingState
-import com.google.accompanist.web.WebView
-import com.google.accompanist.web.rememberWebViewNavigator
-import com.google.accompanist.web.rememberWebViewState
+import com.kevinnzou.web.AccompanistWebViewClient
+import com.kevinnzou.web.LoadingState
+import com.kevinnzou.web.WebView
+import com.kevinnzou.web.rememberWebViewNavigator
+import com.kevinnzou.web.rememberWebViewState
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.AppBarActions
 import eu.kanade.presentation.components.WarningBanner
@@ -99,6 +99,17 @@ fun WebViewScreenContent(
                 request: WebResourceRequest?,
             ): Boolean {
                 request?.let {
+                    // Don't attempt to open blobs as webpages
+                    if (it.url.toString().startsWith("blob:http")) {
+                        return false
+                    }
+
+                    // Ignore intents urls
+                    if (it.url.toString().startsWith("intent://")) {
+                        return true
+                    }
+
+                    // Continue with request, but with custom headers
                     view?.loadUrl(it.url.toString(), headers)
                 }
                 return super.shouldOverrideUrlLoading(view, request)

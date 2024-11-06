@@ -24,7 +24,6 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import tachiyomi.domain.category.anime.interactor.GetAnimeCategories
 import tachiyomi.domain.category.anime.interactor.ResetAnimeCategoryFlags
 import tachiyomi.domain.category.model.Category
@@ -53,8 +52,7 @@ object SettingsLibraryScreen : SearchableSettings {
     @Composable
     override fun getPreferences(): List<Preference> {
         val getAnimeCategories = remember { Injekt.get<GetAnimeCategories>() }
-        val allAnimeCategories by getAnimeCategories.subscribe()
-            .collectAsState(initial = runBlocking { getAnimeCategories.await() })
+        val allAnimeCategories by getAnimeCategories.subscribe().collectAsState(initial = emptyList())
         val libraryPreferences = remember { Injekt.get<LibraryPreferences>() }
 
         return listOf(
@@ -76,10 +74,6 @@ object SettingsLibraryScreen : SearchableSettings {
     ): Preference.PreferenceGroup {
         val scope = rememberCoroutineScope()
         val userAnimeCategoriesCount = allAnimeCategories.filterNot(Category::isSystemCategory).size
-
-        val defaultAnimeCategory by libraryPreferences.defaultAnimeCategory().collectAsState()
-        val selectedAnimeCategory =
-            allAnimeCategories.find { it.id == defaultAnimeCategory.toLong() }
 
         // For default category
         val animeIds = listOf(libraryPreferences.defaultAnimeCategory().defaultValue()) +
@@ -105,8 +99,6 @@ object SettingsLibraryScreen : SearchableSettings {
                 Preference.PreferenceItem.ListPreference(
                     pref = libraryPreferences.defaultAnimeCategory(),
                     title = stringResource(MR.strings.default_category),
-                    subtitle = selectedAnimeCategory?.visualName
-                        ?: stringResource(MR.strings.default_category_summary),
                     entries = animeIds.zip(animeLabels).toMap().toImmutableMap(),
                 ),
                 Preference.PreferenceItem.SwitchPreference(

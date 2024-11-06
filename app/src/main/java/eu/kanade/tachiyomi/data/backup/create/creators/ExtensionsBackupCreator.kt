@@ -13,7 +13,7 @@ class ExtensionsBackupCreator(
     private val animeExtensionManager: AnimeExtensionManager = Injekt.get(),
 ) {
 
-    fun backupExtensions(): List<BackupExtension> {
+    operator fun invoke(): List<BackupExtension> {
         val installedExtensions = mutableListOf<BackupExtension>()
         animeExtensionManager.installedExtensionsFlow.value.forEach {
             val packageName = it.pkgName

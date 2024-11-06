@@ -21,27 +21,16 @@ jobs:
 
     steps:
       - name: Clone repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Validate Gradle Wrapper
-        uses: gradle/wrapper-validation-action@v1
+        uses: gradle/actions/wrapper-validation@d156388eb19639ec20ade50009f3d199ce1e2808 # v4.1.0
 
       - name: Set up JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b # v4.5.0
         with:
           java-version: 17
           distribution: adopt
-      # AM (REMOVE_ACRA_FIREBASE) -->
-      # - name: Set ACRA properties
-      #  env:
-      #    acraUri: ${{ secrets.ACRA_URI }}
-      #    acraLogin: ${{ secrets.ACRA_LOGIN }}
-      #    acraPassword: ${{ secrets.ACRA_PASSWORD }}
-      #  run: |
-      #    echo "ACRA_URI=$acraUri" >> acra.properties
-      #    echo "ACRA_LOGIN=$acraLogin" >> acra.properties
-      #    echo "ACRA_PASSWORD=$acraPassword" >> acra.properties
-      # <-- AM (REMOVE_ACRA_FIREBASE)
 
       # AM (SYNC_DRIVE) -->
       - name: Write client_secrets.json
@@ -52,10 +41,23 @@ jobs:
             write-mode: overwrite
       # <-- AM (SYNC_DRIVE)
 
+      - name: Set up gradle
+        uses: gradle/actions/setup-gradle@d156388eb19639ec20ade50009f3d199ce1e2808 # v4.1.0
+
       - name: Build app and run unit tests
-        uses: gradle/gradle-command-action@v2
+        run: ./gradlew spotlessCheck assembleStandardRelease testReleaseUnitTest testStandardReleaseUnitTest
+
+      - name: Upload APK
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
-          arguments: ktlintCheck assembleStandardRelease testReleaseUnitTest
+          name: arm64-v8a-${{ github.sha }}
+          path: app/build/outputs/apk/standard/release/app-standard-arm64-v8a-release-unsigned.apk
+
+      - name: Upload mapping
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: mapping-${{ github.sha }}
+          path: app/build/outputs/mapping/standardRelease
 
       # Sign APK and create release for tags
 
@@ -68,7 +70,7 @@ jobs:
 
       - name: Sign APK
         if: startsWith(github.ref, 'refs/tags/') && github.repository == 'Quickdesh/Animiru'
-        uses: r0adkll/sign-android-release@v1
+        uses: r0adkll/sign-android-release@349ebdef58775b1e0d8099458af0816dc79b6407 # v1
         with:
           releaseDirectory: app/build/outputs/apk/standard/release
           signingKeyBase64: ${{ secrets.SIGNING_KEY }}
@@ -105,7 +107,7 @@ jobs:
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/') && github.repository == 'Quickdesh/Animiru'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 # v2.0.8
         with:
           tag_name: ${{ env.VERSION_TAG }}
           name: Animiru ${{ env.VERSION_TAG }}

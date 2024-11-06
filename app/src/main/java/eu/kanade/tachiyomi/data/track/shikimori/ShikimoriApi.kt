@@ -4,6 +4,11 @@ import android.net.Uri
 import androidx.core.net.toUri
 import eu.kanade.tachiyomi.data.database.models.anime.AnimeTrack
 import eu.kanade.tachiyomi.data.track.model.AnimeTrackSearch
+import eu.kanade.tachiyomi.data.track.shikimori.dto.SMAddEntryResponse
+import eu.kanade.tachiyomi.data.track.shikimori.dto.SMEntry
+import eu.kanade.tachiyomi.data.track.shikimori.dto.SMOAuth
+import eu.kanade.tachiyomi.data.track.shikimori.dto.SMUser
+import eu.kanade.tachiyomi.data.track.shikimori.dto.SMUserListEntry
 import eu.kanade.tachiyomi.network.DELETE
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.POST
@@ -11,21 +16,13 @@ import eu.kanade.tachiyomi.network.awaitSuccess
 import eu.kanade.tachiyomi.network.jsonMime
 import eu.kanade.tachiyomi.network.parseAs
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.double
-import kotlinx.serialization.json.int
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.long
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
-import tachiyomi.core.util.lang.withIOContext
+import tachiyomi.core.common.util.lang.withIOContext
 import uy.kohesive.injekt.injectLazy
 import tachiyomi.domain.track.anime.model.AnimeTrack as DomainAnimeTrack
 
@@ -47,21 +44,20 @@ class ShikimoriApi(
                         put("user_id", userId)
                         put("target_id", track.remote_id)
                         put("target_type", "Anime")
-                        put("chapters", track.last_episode_seen.toInt())
+                        put("episodes", track.last_episode_seen.toInt())
                         put("score", track.score.toInt())
                         put("status", track.toShikimoriStatus())
                     }
                 }
                 authClient.newCall(
                     POST(
-                        "$apiUrl/v2/user_rates",
+                        "$API_URL/v2/user_rates",
                         body = payload.toString().toRequestBody(jsonMime),
                     ),
                 ).awaitSuccess()
-                    .parseAs<JsonObject>()
+                    .parseAs<SMAddEntryResponse>()
                     .let {
-                        track.library_id =
-                            it["id"]!!.jsonPrimitive.long // save id of the entry for possible future delete request
+                        track.library_id = it.id
                     }
                 track
             }
@@ -76,14 +72,14 @@ class ShikimoriApi(
     suspend fun deleteLibAnime(track: DomainAnimeTrack) {
         withIOContext {
             authClient
-                .newCall(DELETE("$apiUrl/v2/user_rates/${track.libraryId}"))
+                .newCall(DELETE("$API_URL/v2/user_rates/${track.libraryId}"))
                 .awaitSuccess()
         }
     }
 
     suspend fun searchAnime(search: String): List<AnimeTrackSearch> {
         return withIOContext {
-            val url = "$apiUrl/animes".toUri().buildUpon()
+            val url = "$API_URL/animes".toUri().buildUpon()
                 .appendQueryParameter("order", "popularity")
                 .appendQueryParameter("search", search)
                 .appendQueryParameter("limit", "20")
@@ -91,56 +87,24 @@ class ShikimoriApi(
             with(json) {
                 authClient.newCall(GET(url.toString()))
                     .awaitSuccess()
-                    .parseAs<JsonArray>()
-                    .let { response ->
-                        response.map {
-                            jsonToAnimeSearch(it.jsonObject)
-                        }
-                    }
+                    .parseAs<List<SMEntry>>()
+                    .map { it.toAnimeTrack(trackId) }
             }
-        }
-    }
-
-    private fun jsonToAnimeSearch(obj: JsonObject): AnimeTrackSearch {
-        return AnimeTrackSearch.create(trackId).apply {
-            remote_id = obj["id"]!!.jsonPrimitive.long
-            title = obj["name"]!!.jsonPrimitive.content
-            total_episodes = obj["episodes"]!!.jsonPrimitive.long
-            cover_url = baseUrl + obj["image"]!!.jsonObject["preview"]!!.jsonPrimitive.content
-            summary = ""
-            score = obj["score"]!!.jsonPrimitive.double
-            tracking_url = baseUrl + obj["url"]!!.jsonPrimitive.content
-            publishing_status = obj["status"]!!.jsonPrimitive.content
-            publishing_type = obj["kind"]!!.jsonPrimitive.content
-            start_date = obj.get("aired_on")!!.jsonPrimitive.contentOrNull ?: ""
-        }
-    }
-
-    private fun jsonToAnimeTrack(obj: JsonObject, animes: JsonObject): AnimeTrack {
-        return AnimeTrack.create(trackId).apply {
-            title = animes["name"]!!.jsonPrimitive.content
-            remote_id = obj["id"]!!.jsonPrimitive.long
-            total_episodes = animes["episodes"]!!.jsonPrimitive.long
-            library_id = obj["id"]!!.jsonPrimitive.long
-            last_episode_seen = obj["episodes"]!!.jsonPrimitive.double
-            score = obj["score"]!!.jsonPrimitive.int.toDouble()
-            status = toTrackStatus(obj["status"]!!.jsonPrimitive.content)
-            tracking_url = baseUrl + animes["url"]!!.jsonPrimitive.content
         }
     }
 
     suspend fun findLibAnime(track: AnimeTrack, user_id: String): AnimeTrack? {
         return withIOContext {
-            val urlAnimes = "$apiUrl/mangas".toUri().buildUpon()
+            val urlAnimes = "$API_URL/animes".toUri().buildUpon()
                 .appendPath(track.remote_id.toString())
                 .build()
-            val animes = with(json) {
+            val anime = with(json) {
                 authClient.newCall(GET(urlAnimes.toString()))
                     .awaitSuccess()
-                    .parseAs<JsonObject>()
+                    .parseAs<SMEntry>()
             }
 
-            val url = "$apiUrl/v2/user_rates".toUri().buildUpon()
+            val url = "$API_URL/v2/user_rates".toUri().buildUpon()
                 .appendQueryParameter("user_id", user_id)
                 .appendQueryParameter("target_id", track.remote_id.toString())
                 .appendQueryParameter("target_type", "Anime")
@@ -148,15 +112,14 @@ class ShikimoriApi(
             with(json) {
                 authClient.newCall(GET(url.toString()))
                     .awaitSuccess()
-                    .parseAs<JsonArray>()
-                    .let { response ->
-                        if (response.size > 1) {
-                            throw Exception("Too much animes in response")
+                    .parseAs<List<SMUserListEntry>>()
+                    .let { entries ->
+                        if (entries.size > 1) {
+                            throw Exception("Too many manga in response")
                         }
-                        val entry = response.map {
-                            jsonToAnimeTrack(it.jsonObject, animes)
-                        }
-                        entry.firstOrNull()
+                        entries
+                            .map { it.toAnimeTrack(trackId, anime) }
+                            .firstOrNull()
                     }
             }
         }
@@ -164,16 +127,14 @@ class ShikimoriApi(
 
     suspend fun getCurrentUser(): Int {
         return with(json) {
-            authClient.newCall(GET("$apiUrl/users/whoami"))
+            authClient.newCall(GET("$API_URL/users/whoami"))
                 .awaitSuccess()
-                .parseAs<JsonObject>()
-                .let {
-                    it["id"]!!.jsonPrimitive.int
-                }
+                .parseAs<SMUser>()
+                .id
         }
     }
 
-    suspend fun accessToken(code: String): OAuth {
+    suspend fun accessToken(code: String): SMOAuth {
         return withIOContext {
             with(json) {
                 client.newCall(accessTokenRequest(code))
@@ -184,39 +145,39 @@ class ShikimoriApi(
     }
 
     private fun accessTokenRequest(code: String) = POST(
-        oauthUrl,
+        OAUTH_URL,
         body = FormBody.Builder()
             .add("grant_type", "authorization_code")
-            .add("client_id", clientId)
-            .add("client_secret", clientSecret)
+            .add("client_id", CLIENT_ID)
+            .add("client_secret", CLIENT_SECRET)
             .add("code", code)
-            .add("redirect_uri", redirectUrl)
+            .add("redirect_uri", REDIRECT_URL)
             .build(),
     )
 
     companion object {
-        private const val clientId = "tQLOaRzbA0gJ4WSlsq6sQcsRWAAk-t8RIhssui6fQ1w"
-        private const val clientSecret = "95WTl3ePbcXJtVYkiWiP4bQUtJL9oGbbneqKZ6VOwhs"
+        const val BASE_URL = "https://shikimori.one"
+        private const val API_URL = "$BASE_URL/api"
+        private const val OAUTH_URL = "$BASE_URL/oauth/token"
+        private const val LOGIN_URL = "$BASE_URL/oauth/authorize"
 
-        private const val baseUrl = "https://shikimori.one"
-        private const val apiUrl = "$baseUrl/api"
-        private const val oauthUrl = "$baseUrl/oauth/token"
-        private const val loginUrl = "$baseUrl/oauth/authorize"
+        private const val REDIRECT_URL = "animiru://shikimori-auth"
 
-        private const val redirectUrl = "animiru://shikimori-auth"
+        private const val CLIENT_ID = "tQLOaRzbA0gJ4WSlsq6sQcsRWAAk-t8RIhssui6fQ1w"
+        private const val CLIENT_SECRET = "95WTl3ePbcXJtVYkiWiP4bQUtJL9oGbbneqKZ6VOwhs"
 
-        fun authUrl(): Uri = loginUrl.toUri().buildUpon()
-            .appendQueryParameter("client_id", clientId)
-            .appendQueryParameter("redirect_uri", redirectUrl)
+        fun authUrl(): Uri = LOGIN_URL.toUri().buildUpon()
+            .appendQueryParameter("client_id", CLIENT_ID)
+            .appendQueryParameter("redirect_uri", REDIRECT_URL)
             .appendQueryParameter("response_type", "code")
             .build()
 
         fun refreshTokenRequest(token: String) = POST(
-            oauthUrl,
+            OAUTH_URL,
             body = FormBody.Builder()
                 .add("grant_type", "refresh_token")
-                .add("client_id", clientId)
-                .add("client_secret", clientSecret)
+                .add("client_id", CLIENT_ID)
+                .add("client_secret", CLIENT_SECRET)
                 .add("refresh_token", token)
                 .build(),
         )

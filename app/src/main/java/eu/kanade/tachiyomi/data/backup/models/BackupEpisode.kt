@@ -25,9 +25,7 @@ data class BackupEpisode(
     @ProtoNumber(9) var episodeNumber: Float = 0F,
     @ProtoNumber(10) var sourceOrder: Long = 0,
     @ProtoNumber(11) var lastModifiedAt: Long = 0,
-    // AM (SYNC) -->
     @ProtoNumber(12) var version: Long = 0,
-    // <-- AM (SYNC)
 ) {
     fun toEpisodeImpl(): Episode {
         return Episode.create().copy(
@@ -46,9 +44,7 @@ data class BackupEpisode(
             dateUpload = this@BackupEpisode.dateUpload,
             sourceOrder = this@BackupEpisode.sourceOrder,
             lastModifiedAt = this@BackupEpisode.lastModifiedAt,
-            // AM (SYNC) -->
             version = this@BackupEpisode.version,
-            // <-- AM (SYNC)
         )
     }
 }
@@ -71,10 +67,8 @@ val backupEpisodeMapper = {
         dateFetch: Long,
         dateUpload: Long,
         lastModifiedAt: Long,
-        // AM (SYNC) -->
         version: Long,
         _: Long,
-    // <-- AM (SYNC)
     ->
     BackupEpisode(
         url = url,
@@ -92,8 +86,6 @@ val backupEpisodeMapper = {
         dateUpload = dateUpload,
         sourceOrder = source_order,
         lastModifiedAt = lastModifiedAt,
-        // AM (SYNC) -->
         version = version,
-        // <-- AM (SYNC)
     )
 }

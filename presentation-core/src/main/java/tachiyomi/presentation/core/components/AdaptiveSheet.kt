@@ -4,25 +4,22 @@ import android.content.res.Configuration.ORIENTATION_LANDSCAPE
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.rememberSplineBasedDecay
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.DraggableAnchors
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.gestures.animateTo
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredWidthIn
-import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -43,7 +40,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
@@ -58,7 +54,6 @@ private val sheetAnimationSpec = tween<Float>(durationMillis = 350)
 @Composable
 fun AdaptiveSheet(
     isTabletUi: Boolean,
-    tonalElevation: Dp,
     enableSwipeDismiss: Boolean,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
@@ -88,8 +83,7 @@ fun AdaptiveSheet(
         Box(
             modifier = Modifier
                 .clickable(
-                    enabled = true,
-                    interactionSource = remember { MutableInteractionSource() },
+                    interactionSource = null,
                     indication = null,
                     onClick = internalOnDismissRequest,
                 )
@@ -101,7 +95,7 @@ fun AdaptiveSheet(
                 modifier = Modifier
                     .requiredWidthIn(max = maxWidth)
                     .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
+                        interactionSource = null,
                         indication = null,
                         onClick = {},
                     )
@@ -109,7 +103,7 @@ fun AdaptiveSheet(
                     .padding(vertical = 16.dp)
                     .then(modifier),
                 shape = MaterialTheme.shapes.extraLarge,
-                tonalElevation = tonalElevation,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 content = {
                     BackHandler(enabled = alpha > 0f, onBack = internalOnDismissRequest)
                     content()
@@ -121,23 +115,25 @@ fun AdaptiveSheet(
             }
         }
     } else {
+        val decayAnimationSpec = rememberSplineBasedDecay<Float>()
         val anchoredDraggableState = remember {
             AnchoredDraggableState(
                 initialValue = 1,
-                animationSpec = sheetAnimationSpec,
                 positionalThreshold = { with(density) { 56.dp.toPx() } },
                 velocityThreshold = { with(density) { 125.dp.toPx() } },
+                snapAnimationSpec = sheetAnimationSpec,
+                decayAnimationSpec = decayAnimationSpec,
             )
         }
         val internalOnDismissRequest = {
-            if (anchoredDraggableState.currentValue == 0) {
+            if (anchoredDraggableState.settledValue == 0) {
                 scope.launch { anchoredDraggableState.animateTo(1) }
             }
         }
         Box(
             modifier = Modifier
                 .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
+                    interactionSource = null,
                     indication = null,
                     onClick = internalOnDismissRequest,
                 )
@@ -155,7 +151,7 @@ fun AdaptiveSheet(
                 modifier = Modifier
                     .widthIn(max = maxWidth)
                     .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
+                        interactionSource = null,
                         indication = null,
                         onClick = {},
                     )
@@ -163,7 +159,9 @@ fun AdaptiveSheet(
                         if (enableSwipeDismiss) {
                             Modifier.nestedScroll(
                                 remember(anchoredDraggableState) {
-                                    anchoredDraggableState.preUpPostDownNestedScrollConnection()
+                                    anchoredDraggableState.preUpPostDownNestedScrollConnection(
+                                        onFling = { scope.launch { anchoredDraggableState.settle(it) } },
+                                    )
                                 },
                             )
                         } else {
@@ -185,12 +183,10 @@ fun AdaptiveSheet(
                         orientation = Orientation.Vertical,
                         enabled = enableSwipeDismiss,
                     )
-                    .windowInsetsPadding(
-                        WindowInsets.systemBars
-                            .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-                    ),
+                    .navigationBarsPadding()
+                    .statusBarsPadding(),
                 shape = MaterialTheme.shapes.extraLarge,
-                tonalElevation = tonalElevation,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 content = {
                     BackHandler(
                         enabled = anchoredDraggableState.targetValue == 0,
@@ -202,7 +198,7 @@ fun AdaptiveSheet(
 
             LaunchedEffect(anchoredDraggableState) {
                 scope.launch { anchoredDraggableState.animateTo(0) }
-                snapshotFlow { anchoredDraggableState.currentValue }
+                snapshotFlow { anchoredDraggableState.settledValue }
                     .drop(1)
                     .filter { it == 1 }
                     .collectLatest {
@@ -213,10 +209,12 @@ fun AdaptiveSheet(
     }
 }
 
-private fun <T> AnchoredDraggableState<T>.preUpPostDownNestedScrollConnection() = object : NestedScrollConnection {
+private fun <T> AnchoredDraggableState<T>.preUpPostDownNestedScrollConnection(
+    onFling: (velocity: Float) -> Unit,
+) = object : NestedScrollConnection {
     override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
         val delta = available.toFloat()
-        return if (delta < 0 && source == NestedScrollSource.Drag) {
+        return if (delta < 0 && source == NestedScrollSource.UserInput) {
             dispatchRawDelta(delta).toOffset()
         } else {
             Offset.Zero
@@ -228,7 +226,7 @@ private fun <T> AnchoredDraggableState<T>.preUpPostDownNestedScrollConnection() 
         available: Offset,
         source: NestedScrollSource,
     ): Offset {
-        return if (source == NestedScrollSource.Drag) {
+        return if (source == NestedScrollSource.UserInput) {
             dispatchRawDelta(available.toFloat()).toOffset()
         } else {
             Offset.Zero
@@ -238,7 +236,7 @@ private fun <T> AnchoredDraggableState<T>.preUpPostDownNestedScrollConnection() 
     override suspend fun onPreFling(available: Velocity): Velocity {
         val toFling = available.toFloat()
         return if (toFling < 0 && offset > anchors.minAnchor()) {
-            settle(toFling)
+            onFling(toFling)
             // since we go to the anchor with tween settling, consume all for the best UX
             available
         } else {
@@ -247,13 +245,8 @@ private fun <T> AnchoredDraggableState<T>.preUpPostDownNestedScrollConnection() 
     }
 
     override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-        val toFling = available.toFloat()
-        return if (toFling > 0) {
-            settle(toFling)
-            available
-        } else {
-            Velocity.Zero
-        }
+        onFling(available.toFloat())
+        return available
     }
 
     private fun Float.toOffset(): Offset = Offset(0f, this)
@@ -261,5 +254,6 @@ private fun <T> AnchoredDraggableState<T>.preUpPostDownNestedScrollConnection() 
     @JvmName("velocityToFloat")
     private fun Velocity.toFloat() = this.y
 
+    @JvmName("offsetToFloat")
     private fun Offset.toFloat(): Float = this.y
 }

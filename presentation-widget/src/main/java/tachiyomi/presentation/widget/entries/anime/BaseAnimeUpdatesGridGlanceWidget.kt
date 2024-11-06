@@ -21,19 +21,22 @@ import androidx.glance.background
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.padding
 import androidx.glance.unit.ColorProvider
-import coil.executeBlocking
-import coil.imageLoader
-import coil.request.CachePolicy
-import coil.request.ImageRequest
-import coil.size.Precision
-import coil.size.Scale
-import coil.transform.RoundedCornersTransformation
+import coil3.annotation.ExperimentalCoilApi
+import coil3.asDrawable
+import coil3.executeBlocking
+import coil3.imageLoader
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
+import coil3.request.transformations
+import coil3.size.Precision
+import coil3.size.Scale
+import coil3.transform.RoundedCornersTransformation
 import eu.kanade.tachiyomi.core.security.SecurityPreferences
 import eu.kanade.tachiyomi.util.system.dpToPx
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.map
-import tachiyomi.core.util.lang.withIOContext
+import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.domain.entries.anime.model.AnimeCover
 import tachiyomi.domain.updates.anime.interactor.GetAnimeUpdates
 import tachiyomi.domain.updates.anime.model.AnimeUpdatesWithRelations
@@ -106,6 +109,7 @@ abstract class BaseAnimeUpdatesGridGlanceWidget(
         }
     }
 
+    @OptIn(ExperimentalCoilApi::class)
     private suspend fun List<AnimeUpdatesWithRelations>.prepareData(
         rowCount: Int,
         columnCount: Int,
@@ -141,7 +145,11 @@ abstract class BaseAnimeUpdatesGridGlanceWidget(
                             }
                         }
                         .build()
-                    Pair(updatesView.animeId, context.imageLoader.executeBlocking(request).drawable?.toBitmap())
+                    val bitmap = context.imageLoader.executeBlocking(request)
+                        .image
+                        ?.asDrawable(context.resources)
+                        ?.toBitmap()
+                    Pair(updatesView.animeId, bitmap)
                 }
                 .toImmutableList()
         }

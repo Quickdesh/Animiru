@@ -7,16 +7,12 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.core.view.WindowInsetsControllerCompat
 import cafe.adriel.voyager.core.annotation.InternalVoyagerApi
 import cafe.adriel.voyager.core.lifecycle.DisposableEffectIgnoringConfiguration
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.Navigator
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import eu.kanade.presentation.util.ScreenTransition
 import eu.kanade.presentation.util.isTabletUi
 import tachiyomi.presentation.core.components.AdaptiveSheet as AdaptiveSheetImpl
@@ -25,7 +21,6 @@ import tachiyomi.presentation.core.components.AdaptiveSheet as AdaptiveSheetImpl
 @Composable
 fun NavigatorAdaptiveSheet(
     screen: Screen,
-    tonalElevation: Dp = 1.dp,
     enableSwipeDismiss: (Navigator) -> Boolean = { true },
     onDismissRequest: () -> Unit,
 ) {
@@ -33,7 +28,6 @@ fun NavigatorAdaptiveSheet(
         screen = screen,
         content = { sheetNavigator ->
             AdaptiveSheet(
-                tonalElevation = tonalElevation,
                 enableSwipeDismiss = enableSwipeDismiss(sheetNavigator),
                 onDismissRequest = onDismissRequest,
             ) {
@@ -75,8 +69,6 @@ fun NavigatorAdaptiveSheet(
 fun AdaptiveSheet(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
-    hideSystemBars: Boolean = false,
-    tonalElevation: Dp = 1.dp,
     enableSwipeDismiss: Boolean = true,
     content: @Composable () -> Unit,
 ) {
@@ -86,16 +78,9 @@ fun AdaptiveSheet(
         onDismissRequest = onDismissRequest,
         properties = dialogProperties,
     ) {
-        if (hideSystemBars) {
-            rememberSystemUiController().apply {
-                isSystemBarsVisible = false
-                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            }
-        }
         AdaptiveSheetImpl(
             modifier = modifier,
             isTabletUi = isTabletUi,
-            tonalElevation = tonalElevation,
             enableSwipeDismiss = enableSwipeDismiss,
             onDismissRequest = onDismissRequest,
         ) {
@@ -106,5 +91,5 @@ fun AdaptiveSheet(
 
 private val dialogProperties = DialogProperties(
     usePlatformDefaultWidth = false,
-    decorFitsSystemWindows = false,
+    decorFitsSystemWindows = true,
 )

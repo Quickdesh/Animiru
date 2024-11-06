@@ -1,15 +1,19 @@
+import mihon.buildlogic.getBuildTime
+import mihon.buildlogic.getCommitCount
+import mihon.buildlogic.getGitSha
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    id("com.android.application")
-    id("com.mikepenz.aboutlibraries.plugin")
-    kotlin("android")
-    kotlin("plugin.serialization")
+    id("mihon.android.application")
+    id("mihon.android.application.compose")
     id("com.github.zellius.shortcut-helper")
+    kotlin("plugin.serialization")
+    alias(libs.plugins.aboutLibraries)
 }
 
 shortcutHelper.setFilePath("./shortcuts.xml")
 
+@Suppress("PropertyName")
 val SUPPORTED_ABIS = setOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
 
 android {
@@ -18,7 +22,7 @@ android {
     defaultConfig {
         applicationId = "xyz.Quickdev.Animiru.mi"
 
-        versionCode = 123
+        versionCode = 126
         versionName = "0.17.2.0"
 
         buildConfigField("String", "COMMIT_COUNT", "\"${getCommitCount()}\"")
@@ -112,13 +116,16 @@ android {
     packaging {
         resources.excludes.addAll(
             listOf(
+                "kotlin-tooling-metadata.json",
                 "META-INF/DEPENDENCIES",
                 "LICENSE.txt",
                 "META-INF/LICENSE",
-                "META-INF/LICENSE.txt",
+                "META-INF/**/LICENSE.txt",
+                "META-INF/*.properties",
+                "META-INF/**/*.properties",
                 "META-INF/README.md",
                 "META-INF/NOTICE",
-                "META-INF/*.kotlin_module",
+                "META-INF/*.version",
             ),
         )
     }
@@ -129,7 +136,6 @@ android {
 
     buildFeatures {
         viewBinding = true
-        compose = true
         buildConfig = true
 
         // Disable some unused things
@@ -142,15 +148,12 @@ android {
         abortOnError = false
         checkReleaseBuilds = false
     }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = compose.versions.compiler.get()
-    }
 }
 
 dependencies {
     implementation(projects.i18n)
-    implementation(projects.core)
+    implementation(projects.core.archive)
+    implementation(projects.core.common)
     implementation(projects.coreMetadata)
     implementation(projects.sourceApi)
     implementation(projects.sourceLocal)
@@ -160,20 +163,17 @@ dependencies {
     implementation(projects.presentationWidget)
 
     // Compose
-    implementation(platform(compose.bom))
     implementation(compose.activity)
     implementation(compose.foundation)
     implementation(compose.material3.core)
-    implementation(compose.material.core)
     implementation(compose.material.icons)
     implementation(compose.animation)
     implementation(compose.animation.graphics)
     debugImplementation(compose.ui.tooling)
     implementation(compose.ui.tooling.preview)
     implementation(compose.ui.util)
-    implementation(compose.accompanist.webview)
-    implementation(compose.accompanist.systemuicontroller)
-    lintChecks(compose.lintchecks)
+
+    implementation(androidx.interpolator)
 
     implementation(androidx.paging.runtime)
     implementation(androidx.paging.compose)
@@ -222,13 +222,12 @@ dependencies {
     // Disk
     implementation(libs.disklrucache)
     implementation(libs.unifile)
-    implementation(libs.junrar)
 
     // Preferences
     implementation(libs.preferencektx)
 
     // Dependency injection
-    implementation(libs.injekt.core)
+    implementation(libs.injekt)
 
     // Image loading
     implementation(platform(libs.coil.bom))
@@ -251,14 +250,11 @@ dependencies {
     implementation(libs.bundles.voyager)
     implementation(libs.compose.materialmotion)
     implementation(libs.swipe)
+    implementation(libs.compose.webview)
+    implementation(libs.compose.grid)
 
     // Logging
     implementation(libs.logcat)
-
-    // AM (REMOVE_ACRA_FIREBASE) -->
-    // Crash reports
-    // implementation(libs.bundles.acra)
-    // <-- AM (REMOVE_ACRA_FIREBASE)
 
     // Shizuku
     implementation(libs.bundles.shizuku)
@@ -272,6 +268,8 @@ dependencies {
     // AM (REMOVE_LIBRARIES) -->
     // implementation(libs.leakcanary.plumber)
     // <-- AM (REMOVE_LIBRARIES)
+
+    testImplementation(kotlinx.coroutines.test)
 
     // mpv-android
     implementation(libs.aniyomi.mpv)
@@ -308,36 +306,24 @@ androidComponents {
 tasks {
     // See https://kotlinlang.org/docs/reference/experimental.html#experimental-status-of-experimental-api(-markers)
     withType<KotlinCompile> {
-        kotlinOptions.freeCompilerArgs += listOf(
-            "-Xcontext-receivers",
-            "-opt-in=androidx.compose.foundation.layout.ExperimentalLayoutApi",
-            "-opt-in=androidx.compose.material.ExperimentalMaterialApi",
-            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
-            "-opt-in=androidx.compose.material.ExperimentalMaterialApi",
-            "-opt-in=androidx.compose.ui.ExperimentalComposeUiApi",
-            "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi",
-            "-opt-in=androidx.compose.animation.ExperimentalAnimationApi",
-            "-opt-in=androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi",
-            "-opt-in=coil.annotation.ExperimentalCoilApi",
-            "-opt-in=com.google.accompanist.permissions.ExperimentalPermissionsApi",
-            "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
-            "-opt-in=kotlinx.coroutines.FlowPreview",
-            "-opt-in=kotlinx.coroutines.InternalCoroutinesApi",
-            "-opt-in=kotlinx.serialization.ExperimentalSerializationApi",
+        compilerOptions.freeCompilerArgs.addAll(
+            listOf(
+                "-Xcontext-receivers",
+                "-opt-in=androidx.compose.foundation.layout.ExperimentalLayoutApi",
+                "-opt-in=androidx.compose.material.ExperimentalMaterialApi",
+                "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
+                "-opt-in=androidx.compose.material.ExperimentalMaterialApi",
+                "-opt-in=androidx.compose.ui.ExperimentalComposeUiApi",
+                "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi",
+                "-opt-in=androidx.compose.animation.ExperimentalAnimationApi",
+                "-opt-in=androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi",
+                "-opt-in=coil3.annotation.ExperimentalCoilApi",
+                "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
+                "-opt-in=kotlinx.coroutines.FlowPreview",
+                "-opt-in=kotlinx.coroutines.InternalCoroutinesApi",
+                "-opt-in=kotlinx.serialization.ExperimentalSerializationApi",
+            ),
         )
-
-        if (project.findProperty("tachiyomi.enableComposeCompilerMetrics") == "true") {
-            kotlinOptions.freeCompilerArgs += listOf(
-                "-P",
-                "plugin:androidx.compose.compiler.plugins.kotlin:reportsDestination=" +
-                    project.layout.buildDirectory.dir("compose_metrics").get().asFile.absolutePath,
-            )
-            kotlinOptions.freeCompilerArgs += listOf(
-                "-P",
-                "plugin:androidx.compose.compiler.plugins.kotlin:metricsDestination=" +
-                    project.layout.buildDirectory.dir("compose_metrics").get().asFile.absolutePath,
-            )
-        }
     }
 }
 

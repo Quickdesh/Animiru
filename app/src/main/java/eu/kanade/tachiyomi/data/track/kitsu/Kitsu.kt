@@ -7,6 +7,7 @@ import eu.kanade.tachiyomi.data.database.models.anime.AnimeTrack
 import eu.kanade.tachiyomi.data.track.AnimeTracker
 import eu.kanade.tachiyomi.data.track.BaseTracker
 import eu.kanade.tachiyomi.data.track.DeletableAnimeTracker
+import eu.kanade.tachiyomi.data.track.kitsu.dto.KitsuOAuth
 import eu.kanade.tachiyomi.data.track.model.AnimeTrackSearch
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
@@ -51,10 +52,8 @@ class Kitsu(id: Long) :
         return listOf(WATCHING, PLAN_TO_WATCH, COMPLETED, ON_HOLD, DROPPED)
     }
 
-    override fun getStatus(status: Long): StringResource? = when (status) {
-        READING -> MR.strings.currently_reading
+    override fun getStatusForAnime(status: Long): StringResource? = when (status) {
         WATCHING -> MR.strings.currently_watching
-        PLAN_TO_READ -> MR.strings.want_to_read
         PLAN_TO_WATCH -> MR.strings.want_to_watch
         COMPLETED -> MR.strings.completed
         ON_HOLD -> MR.strings.on_hold
@@ -153,13 +152,13 @@ class Kitsu(id: Long) :
         return getPassword()
     }
 
-    fun saveToken(oauth: OAuth?) {
+    fun saveToken(oauth: KitsuOAuth?) {
         trackPreferences.trackToken(this).set(json.encodeToString(oauth))
     }
 
-    fun restoreToken(): OAuth? {
+    fun restoreToken(): KitsuOAuth? {
         return try {
-            json.decodeFromString<OAuth>(trackPreferences.trackToken(this).get())
+            json.decodeFromString<KitsuOAuth>(trackPreferences.trackToken(this).get())
         } catch (e: Exception) {
             null
         }

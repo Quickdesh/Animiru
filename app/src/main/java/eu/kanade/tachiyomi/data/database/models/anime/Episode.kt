@@ -1,3 +1,5 @@
+@file:Suppress("PropertyName")
+
 package eu.kanade.tachiyomi.data.database.models.anime
 
 import eu.kanade.tachiyomi.animesource.model.SEpisode
@@ -28,9 +30,7 @@ interface Episode : SEpisode, Serializable {
 
     var last_modified: Long
 
-    // AM (SYNC) -->
     var version: Long
-    // <-- AM (SYNC)
 }
 
 fun Episode.toDomainEpisode(): DomainEpisode? {
@@ -53,8 +53,6 @@ fun Episode.toDomainEpisode(): DomainEpisode? {
         episodeNumber = episode_number.toDouble(),
         scanlator = scanlator,
         lastModifiedAt = last_modified,
-        // AM (SYNC) -->
         version = version,
-        // <-- AM (SYNC)
     )
 }

@@ -59,7 +59,7 @@ import eu.kanade.tachiyomi.ui.library.anime.AnimeLibraryTab
 import eu.kanade.tachiyomi.ui.recents.RecentsTab
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import tachiyomi.core.util.lang.launchUI
+import tachiyomi.core.common.util.lang.launchUI
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.pluralStringResource

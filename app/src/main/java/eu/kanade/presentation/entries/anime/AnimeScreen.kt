@@ -79,7 +79,7 @@ import eu.kanade.tachiyomi.ui.entries.anime.AnimeScreenModel
 import eu.kanade.tachiyomi.ui.entries.anime.EpisodeList
 import eu.kanade.tachiyomi.util.system.copyToClipboard
 import kotlinx.coroutines.delay
-import tachiyomi.core.util.lang.withIOContext
+import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.domain.entries.anime.model.Anime
 import tachiyomi.domain.items.episode.model.Episode
 import tachiyomi.domain.items.episode.service.missingEpisodesCount
@@ -92,8 +92,7 @@ import tachiyomi.presentation.core.components.material.ExtendedFloatingActionBut
 import tachiyomi.presentation.core.components.material.PullRefresh
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
-import tachiyomi.presentation.core.util.isScrolledToEnd
-import tachiyomi.presentation.core.util.isScrollingUp
+import tachiyomi.presentation.core.util.shouldExpandFAB
 import tachiyomi.source.local.entries.anime.isLocal
 import uy.kohesive.injekt.injectLazy
 import java.time.Instant
@@ -440,7 +439,7 @@ private fun AnimeScreenSmallImpl(
                         )
                     },
                     onClick = onContinueWatching,
-                    expanded = episodeListState.isScrollingUp() || episodeListState.isScrolledToEnd(),
+                    expanded = episodeListState.shouldExpandFAB(),
                 )
             }
         },
@@ -450,7 +449,7 @@ private fun AnimeScreenSmallImpl(
         PullRefresh(
             refreshing = state.isRefreshingData,
             onRefresh = onRefresh,
-            enabled = { !isAnySelected },
+            enabled = !isAnySelected,
             indicatorPadding = PaddingValues(top = topPadding),
         ) {
             val layoutDirection = LocalLayoutDirection.current
@@ -475,13 +474,9 @@ private fun AnimeScreenSmallImpl(
                         AnimeInfoBox(
                             isTabletUi = false,
                             appBarPadding = topPadding,
-                            title = state.anime.title,
-                            author = state.anime.author,
-                            artist = state.anime.artist,
+                            anime = state.anime,
                             sourceName = remember { state.source.getNameForAnimeInfo() },
                             isStubSource = remember { state.source is StubAnimeSource },
-                            coverDataProvider = { state.anime },
-                            status = state.anime.status,
                             onCoverClick = onCoverClicked,
                             doSearch = onSearch,
                         )
@@ -547,7 +542,8 @@ private fun AnimeScreenSmallImpl(
                                     timer -= 1000L
                                 }
                             }
-                            if (timer > 0L && showNextEpisodeAirTime &&
+                            if (timer > 0L &&
+                                showNextEpisodeAirTime &&
                                 state.anime.status.toInt() != SAnime.COMPLETED
                             ) {
                                 NextEpisodeAiringListItem(
@@ -746,7 +742,7 @@ fun AnimeScreenLargeImpl(
                     },
                     icon = { Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = null) },
                     onClick = onContinueWatching,
-                    expanded = episodeListState.isScrollingUp() || episodeListState.isScrolledToEnd(),
+                    expanded = episodeListState.shouldExpandFAB(),
                 )
             }
         },
@@ -754,7 +750,7 @@ fun AnimeScreenLargeImpl(
         PullRefresh(
             refreshing = state.isRefreshingData,
             onRefresh = onRefresh,
-            enabled = { !isAnySelected },
+            enabled = !isAnySelected,
             indicatorPadding = PaddingValues(
                 start = insetPadding.calculateStartPadding(layoutDirection),
                 top = with(density) { topBarHeight.toDp() },
@@ -775,13 +771,9 @@ fun AnimeScreenLargeImpl(
                         AnimeInfoBox(
                             isTabletUi = true,
                             appBarPadding = contentPadding.calculateTopPadding(),
-                            title = state.anime.title,
-                            author = state.anime.author,
-                            artist = state.anime.artist,
+                            anime = state.anime,
                             sourceName = remember { state.source.getNameForAnimeInfo() },
                             isStubSource = remember { state.source is StubAnimeSource },
-                            coverDataProvider = { state.anime },
-                            status = state.anime.status,
                             onCoverClick = onCoverClicked,
                             doSearch = onSearch,
                         )
@@ -848,7 +840,8 @@ fun AnimeScreenLargeImpl(
                                             timer -= 1000L
                                         }
                                     }
-                                    if (timer > 0L && showNextEpisodeAirTime &&
+                                    if (timer > 0L &&
+                                        showNextEpisodeAirTime &&
                                         state.anime.status.toInt() != SAnime.COMPLETED
                                     ) {
                                         NextEpisodeAiringListItem(

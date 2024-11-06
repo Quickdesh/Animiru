@@ -27,7 +27,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
-import tachiyomi.core.util.lang.launchIO
+import kotlinx.coroutines.launch
+import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.i18n.MR
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -63,7 +64,8 @@ class AnimeExtensionsScreenModel(
                                 it.name.contains(input, ignoreCase = true) ||
                                     it.baseUrl.contains(input, ignoreCase = true) ||
                                     it.id == input.toLongOrNull()
-                            } || extension.name.contains(input, ignoreCase = true)
+                            } ||
+                                extension.name.contains(input, ignoreCase = true)
                         }
                         is AnimeExtension.Installed -> {
                             extension.sources.any {
@@ -77,7 +79,8 @@ class AnimeExtensionsScreenModel(
                                     } else {
                                         false
                                     }
-                            } || extension.name.contains(input, ignoreCase = true)
+                            } ||
+                                extension.name.contains(input, ignoreCase = true)
                         }
                         is AnimeExtension.Untrusted -> extension.name.contains(
                             input,
@@ -213,7 +216,9 @@ class AnimeExtensionsScreenModel(
     }
 
     fun trustExtension(extension: AnimeExtension.Untrusted) {
-        extensionManager.trust(extension)
+        screenModelScope.launch {
+            extensionManager.trust(extension)
+        }
     }
 
     @Immutable

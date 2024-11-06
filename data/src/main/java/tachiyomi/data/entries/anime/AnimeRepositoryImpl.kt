@@ -2,7 +2,7 @@ package tachiyomi.data.entries.anime
 
 import kotlinx.coroutines.flow.Flow
 import logcat.LogPriority
-import tachiyomi.core.util.system.logcat
+import tachiyomi.core.common.util.system.logcat
 import tachiyomi.data.AnimeUpdateStrategyColumnAdapter
 import tachiyomi.data.StringListColumnAdapter
 import tachiyomi.data.handlers.anime.AnimeDatabaseHandler
@@ -10,6 +10,8 @@ import tachiyomi.domain.entries.anime.model.Anime
 import tachiyomi.domain.entries.anime.model.AnimeUpdate
 import tachiyomi.domain.entries.anime.repository.AnimeRepository
 import tachiyomi.domain.library.anime.LibraryAnime
+import java.time.LocalDate
+import java.time.ZoneId
 
 class AnimeRepositoryImpl(
     private val handler: AnimeDatabaseHandler,
@@ -47,6 +49,10 @@ class AnimeRepositoryImpl(
         return handler.awaitList { animesQueries.getFavorites(AnimeMapper::mapAnime) }
     }
 
+    override suspend fun getWatchedAnimeNotInLibrary(): List<Anime> {
+        return handler.awaitList { animesQueries.getWatchedAnimeNotInLibrary(AnimeMapper::mapAnime) }
+    }
+
     override suspend fun getLibraryAnime(): List<LibraryAnime> {
         return handler.awaitList { animelibViewQueries.animelib(AnimeMapper::mapLibraryAnime) }
     }
@@ -62,6 +68,13 @@ class AnimeRepositoryImpl(
     override suspend fun getDuplicateLibraryAnime(id: Long, title: String): List<Anime> {
         return handler.awaitList {
             animesQueries.getDuplicateLibraryAnime(title, id, AnimeMapper::mapAnime)
+        }
+    }
+
+    override suspend fun getUpcomingAnime(statuses: Set<Long>): Flow<List<Anime>> {
+        val epochMillis = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toEpochSecond() * 1000
+        return handler.subscribeToList {
+            animesQueries.getUpcomingAnime(epochMillis, statuses, AnimeMapper::mapAnime)
         }
     }
 
@@ -106,9 +119,7 @@ class AnimeRepositoryImpl(
                 coverLastModified = anime.coverLastModified,
                 dateAdded = anime.dateAdded,
                 updateStrategy = anime.updateStrategy,
-                // AM (SYNC) -->
                 version = anime.version,
-                // <-- AM (SYNC)
             )
             animesQueries.selectLastInsertedRowId()
         }
@@ -158,10 +169,8 @@ class AnimeRepositoryImpl(
                     dateAdded = value.dateAdded,
                     animeId = value.id,
                     updateStrategy = value.updateStrategy?.let(AnimeUpdateStrategyColumnAdapter::encode),
-                    // AM (SYNC) -->
                     version = value.version,
                     isSyncing = 0,
-                    // <-- AM (SYNC)
                 )
             }
         }

@@ -12,23 +12,28 @@ import android.os.Build
 import android.os.Bundle
 import android.view.View
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -36,16 +41,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.core.animation.doOnEnd
 import androidx.core.net.toUri
 import androidx.core.splashscreen.SplashScreen
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.util.Consumer
-import androidx.core.view.WindowCompat
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
 import androidx.lifecycle.lifecycleScope
@@ -53,11 +58,8 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.NavigatorDisposeBehavior
 import cafe.adriel.voyager.navigator.currentOrThrow
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import eu.kanade.domain.base.BasePreferences
 import eu.kanade.domain.connection.service.ConnectionPreferences
-import eu.kanade.domain.source.service.SourcePreferences
-import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.components.AppStateBanners
 import eu.kanade.presentation.components.DownloadedOnlyBannerBackgroundColor
 import eu.kanade.presentation.components.IncognitoModeBannerBackgroundColor
@@ -67,9 +69,8 @@ import eu.kanade.presentation.more.settings.screen.data.RestoreBackupScreen
 import eu.kanade.presentation.util.AssistContentScreen
 import eu.kanade.presentation.util.DefaultNavigatorScreenTransition
 import eu.kanade.tachiyomi.BuildConfig
-import eu.kanade.tachiyomi.Migrations
 import eu.kanade.tachiyomi.animesource.model.Video
-import eu.kanade.tachiyomi.core.Constants
+import eu.kanade.tachiyomi.core.common.Constants
 import eu.kanade.tachiyomi.data.connection.discord.DiscordRPCService
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadCache
 import eu.kanade.tachiyomi.data.notification.NotificationReceiver
@@ -101,9 +102,10 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import logcat.LogPriority
-import tachiyomi.core.i18n.stringResource
-import tachiyomi.core.util.lang.withUIContext
-import tachiyomi.core.util.system.logcat
+import mihon.core.migration.Migrator
+import tachiyomi.core.common.i18n.stringResource
+import tachiyomi.core.common.util.lang.withUIContext
+import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.release.interactor.GetApplicationRelease
 import tachiyomi.i18n.MR
@@ -112,13 +114,10 @@ import tachiyomi.presentation.core.util.collectAsState
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
-import androidx.compose.ui.graphics.Color.Companion as ComposeColor
 
 class MainActivity : BaseActivity() {
 
-    private val sourcePreferences: SourcePreferences by injectLazy()
     private val libraryPreferences: LibraryPreferences by injectLazy()
-    private val uiPreferences: UiPreferences by injectLazy()
     private val preferences: BasePreferences by injectLazy()
 
     // AM (CONNECTION) -->
@@ -144,27 +143,7 @@ class MainActivity : BaseActivity() {
 
         super.onCreate(savedInstanceState)
 
-        val didMigration = if (isLaunch) {
-            Migrations.upgrade(
-                context = applicationContext,
-                basePreferences = preferences,
-                uiPreferences = uiPreferences,
-                preferenceStore = Injekt.get(),
-                networkPreferences = Injekt.get(),
-                sourcePreferences = sourcePreferences,
-                securityPreferences = Injekt.get(),
-                libraryPreferences = libraryPreferences,
-                playerPreferences = Injekt.get(),
-                backupPreferences = Injekt.get(),
-                trackerManager = Injekt.get(),
-                // AM (CONNECTION) -->
-                connectionManager = Injekt.get(),
-                connectionPreferences = connectionPreferences,
-                // <-- AM (CONNECTION)
-            )
-        } else {
-            false
-        }
+        val didMigration = Migrator.awaitAndRelease()
 
         // Do not let the launcher create a new activity http://stackoverflow.com/questions/16283079
         if (!isTaskRoot) {
@@ -172,17 +151,13 @@ class MainActivity : BaseActivity() {
             return
         }
 
-        // Draw edge-to-edge
-        // TODO: replace with ComponentActivity#enableEdgeToEdge
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-
         setComposeContent {
+            val context = LocalContext.current
+
             val incognito by preferences.incognitoMode().collectAsState()
             val downloadOnly by preferences.downloadedOnly().collectAsState()
             val indexingAnime by animeDownloadCache.isInitializing.collectAsState()
 
-            // Set status bar color considering the top app state banner
-            val systemUiController = rememberSystemUiController()
             val isSystemInDarkTheme = isSystemInDarkTheme()
             val statusBarBackgroundColor = when {
                 indexingAnime -> IndexingBannerBackgroundColor
@@ -190,27 +165,13 @@ class MainActivity : BaseActivity() {
                 incognito -> IncognitoModeBannerBackgroundColor
                 else -> MaterialTheme.colorScheme.surface
             }
-            LaunchedEffect(systemUiController, statusBarBackgroundColor) {
-                systemUiController.setStatusBarColor(
-                    color = ComposeColor.Transparent,
-                    darkIcons = statusBarBackgroundColor.luminance() > 0.5,
-                    transformColorForLightContent = { ComposeColor.Black },
-                )
-            }
-
-            // Set navigation bar color
-            val context = LocalContext.current
-            val navbarScrimColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
-            LaunchedEffect(systemUiController, isSystemInDarkTheme, navbarScrimColor) {
-                systemUiController.setNavigationBarColor(
-                    color = if (context.isNavigationBarNeedsScrim()) {
-                        navbarScrimColor.copy(alpha = 0.7f)
-                    } else {
-                        ComposeColor.Transparent
-                    },
-                    darkIcons = !isSystemInDarkTheme,
-                    navigationBarContrastEnforced = false,
-                    transformColorForLightContent = { ComposeColor.Black },
+            LaunchedEffect(isSystemInDarkTheme, statusBarBackgroundColor) {
+                // Draw edge-to-edge and set system bars color to transparent
+                val lightStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.BLACK)
+                val darkStyle = SystemBarStyle.dark(Color.TRANSPARENT)
+                enableEdgeToEdge(
+                    statusBarStyle = if (statusBarBackgroundColor.luminance() > 0.5) lightStyle else darkStyle,
+                    navigationBarStyle = if (isSystemInDarkTheme) darkStyle else lightStyle,
                 )
             }
 
@@ -247,13 +208,25 @@ class MainActivity : BaseActivity() {
                     contentWindowInsets = scaffoldInsets,
                 ) { contentPadding ->
                     // Consume insets already used by app state banners
-                    Box(
-                        modifier = Modifier
-                            .padding(contentPadding)
-                            .consumeWindowInsets(contentPadding),
-                    ) {
+                    Box {
                         // Shows current screen
-                        DefaultNavigatorScreenTransition(navigator = navigator)
+                        DefaultNavigatorScreenTransition(
+                            navigator = navigator,
+                            modifier = Modifier
+                                .padding(contentPadding)
+                                .consumeWindowInsets(contentPadding),
+                        )
+                        // Draw navigation bar scrim when needed
+                        if (remember { isNavigationBarNeedsScrim() }) {
+                            Spacer(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .fillMaxWidth()
+                                    .windowInsetsBottomHeight(WindowInsets.navigationBars)
+                                    .alpha(0.8f)
+                                    .background(MaterialTheme.colorScheme.surfaceContainer),
+                            )
+                        }
                     }
                 }
 
@@ -266,7 +239,9 @@ class MainActivity : BaseActivity() {
                             val currentScreen = navigator.lastItem
                             if (currentScreen is BrowseAnimeSourceScreen ||
                                 (currentScreen is AnimeScreen && currentScreen.fromSource)
-                            ) { navigator.popUntilRoot() }
+                            ) {
+                                navigator.popUntilRoot()
+                            }
                         }
                         .launchIn(this)
 
@@ -344,12 +319,13 @@ class MainActivity : BaseActivity() {
     @Composable
     private fun HandleOnNewIntent(context: Context, navigator: Navigator) {
         LaunchedEffect(Unit) {
-            callbackFlow<Intent> {
+            callbackFlow {
                 val componentActivity = context as ComponentActivity
                 val consumer = Consumer<Intent> { trySend(it) }
                 componentActivity.addOnNewIntentListener(consumer)
                 awaitClose { componentActivity.removeOnNewIntentListener(consumer) }
-            }.collectLatest { handleIntentAction(it, navigator) }
+            }
+                .collectLatest { handleIntentAction(it, navigator) }
         }
     }
 
@@ -405,6 +381,7 @@ class MainActivity : BaseActivity() {
      * When custom animation is used, status and navigation bar color will be set to transparent and will be restored
      * after the animation is finished.
      */
+    @Suppress("Deprecation")
     private fun setSplashScreenExitAnimation(splashScreen: SplashScreen?) {
         val root = findViewById<View>(android.R.id.content)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S && splashScreen != null) {

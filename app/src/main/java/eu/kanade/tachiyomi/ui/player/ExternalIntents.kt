@@ -33,10 +33,10 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import logcat.LogPriority
-import tachiyomi.core.util.lang.launchIO
-import tachiyomi.core.util.lang.withIOContext
-import tachiyomi.core.util.lang.withUIContext
-import tachiyomi.core.util.system.logcat
+import tachiyomi.core.common.util.lang.launchIO
+import tachiyomi.core.common.util.lang.withIOContext
+import tachiyomi.core.common.util.lang.withUIContext
+import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.download.service.DownloadPreferences
 import tachiyomi.domain.entries.anime.interactor.GetAnime
 import tachiyomi.domain.entries.anime.model.Anime
@@ -330,6 +330,7 @@ class ExternalIntents {
                 "$packageName.ActivityScreen",
             )
             VLC_PLAYER -> ComponentName(packageName, "$packageName.gui.video.VideoPlayerActivity")
+            MPV_KT, MPV_KT_PREVIEW -> ComponentName(packageName, "live.mehiz.mpvkt.ui.player.PlayerActivity")
             MPV_REMOTE -> ComponentName(packageName, "$packageName.MainActivity")
             JUST_PLAYER -> ComponentName(packageName, "$packageName.PlayerActivity")
             NEXT_PLAYER -> ComponentName(packageName, "$packageName.feature.player.PlayerActivity")
@@ -531,8 +532,10 @@ class ExternalIntents {
             getTracks.await(anime.id)
                 .mapNotNull { track ->
                     val tracker = trackerManager.get(track.trackerId)
-                    if (tracker != null && tracker.isLoggedIn &&
-                        tracker is AnimeTracker && episodeNumber > track.lastEpisodeSeen
+                    if (tracker != null &&
+                        tracker.isLoggedIn &&
+                        tracker is AnimeTracker &&
+                        episodeNumber > track.lastEpisodeSeen
                     ) {
                         val updatedTrack = track.copy(lastEpisodeSeen = episodeNumber)
 
@@ -599,6 +602,8 @@ const val MX_PLAYER = "com.mxtech.videoplayer"
 const val MX_PLAYER_FREE = "com.mxtech.videoplayer.ad"
 const val MX_PLAYER_PRO = "com.mxtech.videoplayer.pro"
 const val VLC_PLAYER = "org.videolan.vlc"
+const val MPV_KT = "live.mehiz.mpvkt"
+const val MPV_KT_PREVIEW = "live.mehiz.mpvkt.preview"
 const val MPV_REMOTE = "com.husudosu.mpvremote"
 const val JUST_PLAYER = "com.brouken.player"
 const val NEXT_PLAYER = "dev.anilbeesetti.nextplayer"

@@ -1,3 +1,5 @@
+@file:Suppress("PropertyName")
+
 package eu.kanade.tachiyomi.data.database.models.anime
 
 class EpisodeImpl : Episode {
@@ -34,9 +36,7 @@ class EpisodeImpl : Episode {
 
     override var last_modified: Long = 0
 
-    // AM (SYNC) -->
     override var version: Long = 0
-    // <-- AM (SYNC)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

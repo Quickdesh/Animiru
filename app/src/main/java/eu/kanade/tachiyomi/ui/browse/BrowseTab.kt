@@ -30,6 +30,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
 import eu.kanade.domain.source.anime.model.installedExtension
+import eu.kanade.domain.source.anime.model.updateSourceIdToExtensionMap
 import eu.kanade.presentation.browse.anime.AnimeExtensionScreen
 import eu.kanade.presentation.browse.anime.AnimeSourceOptionsDialog
 import eu.kanade.presentation.browse.anime.AnimeSourcesScreen
@@ -50,7 +51,7 @@ import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.webview.WebViewScreen
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import tachiyomi.core.util.lang.launchIO
+import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState
@@ -58,9 +59,9 @@ import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import kotlin.math.abs
 
-// AM (BROWSE) -->
-object BrowseTab : Tab() {
-    // <-- AM (BROWSE)
+internal var goToExtensions = false
+
+class BrowseTab : Tab {
 
     override val options: TabOptions
         @Composable
@@ -97,7 +98,7 @@ object BrowseTab : Tab() {
         val extensionScreenModel = rememberScreenModel { AnimeExtensionsScreenModel() }
         val extensionsState by extensionScreenModel.state.collectAsState()
 
-        var inExtensionsScreen by remember { mutableStateOf(false) }
+        var inExtensionsScreen by remember { mutableStateOf(goToExtensions) }
         val animationDuration = 300
         val animationEasing = FastOutSlowInEasing
 
@@ -121,6 +122,7 @@ object BrowseTab : Tab() {
                     animationSpec = tween(durationMillis = animationDuration, easing = animationEasing),
                 ),
             ) {
+                goToExtensions = false
                 AnimeSourcesScreen(
                     state = sourcesState,
                     onClickItem = { source, listing ->
@@ -146,6 +148,7 @@ object BrowseTab : Tab() {
                     animationSpec = tween(durationMillis = animationDuration, easing = animationEasing),
                 ),
             ) {
+                goToExtensions = true
                 AnimeExtensionScreen(
                     state = extensionsState,
                     searchQuery = extensionsState.searchQuery,
@@ -189,7 +192,8 @@ object BrowseTab : Tab() {
                     sourcesScreenModel.closeDialog()
                 },
                 onClickUninstall = {
-                    sourcesScreenModel.uninstallExtension(source.installedExtension)
+                    val ext = source.installedExtension ?: return@AnimeSourceOptionsDialog
+                    sourcesScreenModel.uninstallExtension(ext)
                     sourcesScreenModel.closeDialog()
                 },
                 onDismiss = sourcesScreenModel::closeDialog,
@@ -206,6 +210,7 @@ object BrowseTab : Tab() {
             (context as? MainActivity)?.ready = true
             launchIO {
                 Injekt.get<AnimeExtensionManager>().findAvailableExtensions()
+                updateSourceIdToExtensionMap()
                 sourcesScreenModel.events.collectLatest { event ->
                     when (event) {
                         AnimeSourcesScreenModel.Event.FailedFetchingSources -> {
@@ -219,7 +224,6 @@ object BrowseTab : Tab() {
         LaunchedEffect(inExtensionsScreen) {
             HomeScreen.showBottomNav(!inExtensionsScreen)
         }
-
         // <-- AM (BROWSE)
     }
 }

@@ -35,6 +35,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import eu.kanade.core.util.ifAnimeSourcesLoaded
 import eu.kanade.presentation.browse.anime.BrowseAnimeSourceContent
 import eu.kanade.presentation.browse.anime.MissingSourceScreen
 import eu.kanade.presentation.browse.anime.components.BrowseAnimeSourceToolbar
@@ -45,8 +46,10 @@ import eu.kanade.presentation.util.AssistContentScreen
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.animesource.AnimeCatalogueSource
 import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
-import eu.kanade.tachiyomi.core.Constants
+import eu.kanade.tachiyomi.core.common.Constants
 import eu.kanade.tachiyomi.ui.browse.anime.extension.details.AnimeSourcePreferencesScreen
+import eu.kanade.tachiyomi.ui.browse.anime.migration.search.MigrateAnimeDialog
+import eu.kanade.tachiyomi.ui.browse.anime.migration.search.MigrateAnimeDialogScreenModel
 import eu.kanade.tachiyomi.ui.browse.anime.source.browse.BrowseAnimeSourceScreenModel.Listing
 import eu.kanade.tachiyomi.ui.category.CategoryScreen
 import eu.kanade.tachiyomi.ui.entries.anime.AnimeScreen
@@ -54,12 +57,13 @@ import eu.kanade.tachiyomi.ui.webview.WebViewScreen
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.receiveAsFlow
-import tachiyomi.core.util.lang.launchIO
+import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.domain.source.anime.model.StubAnimeSource
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.stringResource
+import tachiyomi.presentation.core.screens.LoadingScreen
 import tachiyomi.source.local.entries.anime.LocalAnimeSource
 
 data class BrowseAnimeSourceScreen(
@@ -73,6 +77,11 @@ data class BrowseAnimeSourceScreen(
 
     @Composable
     override fun Content() {
+        if (!ifAnimeSourcesLoaded()) {
+            LoadingScreen()
+            return
+        }
+
         val screenModel = rememberScreenModel { BrowseAnimeSourceScreenModel(sourceId, listingQuery) }
         val state by screenModel.state.collectAsState()
 
@@ -249,6 +258,24 @@ data class BrowseAnimeSourceScreen(
                     onDismissRequest = onDismissRequest,
                     onConfirm = { screenModel.addFavorite(dialog.anime) },
                     onOpenAnime = { navigator.push(AnimeScreen(dialog.duplicate.id)) },
+                    onMigrate = {
+                        screenModel.setDialog(
+                            BrowseAnimeSourceScreenModel.Dialog.Migrate(dialog.anime, dialog.duplicate),
+                        )
+                    },
+                )
+            }
+
+            is BrowseAnimeSourceScreenModel.Dialog.Migrate -> {
+                MigrateAnimeDialog(
+                    oldAnime = dialog.oldAnime,
+                    newAnime = dialog.newAnime,
+                    screenModel = MigrateAnimeDialogScreenModel(),
+                    onDismissRequest = onDismissRequest,
+                    onClickTitle = { navigator.push(AnimeScreen(dialog.oldAnime.id)) },
+                    onPopScreen = {
+                        onDismissRequest()
+                    },
                 )
             }
             is BrowseAnimeSourceScreenModel.Dialog.RemoveAnime -> {
@@ -273,7 +300,6 @@ data class BrowseAnimeSourceScreen(
                     },
                 )
             }
-            is BrowseAnimeSourceScreenModel.Dialog.Migrate -> {}
             else -> {}
         }
 

@@ -1,0 +1,42 @@
+package mihon.core.migration.migrations
+
+import mihon.core.migration.Migration
+
+val migrations: List<Migration>
+    get() = listOf(
+        SetupBackupCreateMigration(),
+        SetupAnimeLibraryUpdateMigration(),
+        InternalChapterCacheDirMigration(),
+        CoverToExternalFileMigration(),
+        DeleteExternalChapterCacheDirMigration(),
+        ResetSortPreferenceRemovedMigration(),
+        MigrateToTriStateMigration(),
+        ForceMALLogOutMigration(),
+        DOHMigration(),
+        ResetRotationMigration(),
+        RemoveOneTwoHourUpdateMigration(),
+        SetupBackgroundTasksMigration(),
+        MigrateSortingModeMigration(),
+        AddAllLangMigration(),
+        RemoveQuickUpdateMigration(),
+        CombineUpdateRestrictionMigration(),
+        MigrateSecureScreenMigration(),
+        RenameEnumMigration(),
+        MergeSortTypeDirectionMigration(),
+        EnableAutoBackupMigration(),
+        MoveChapterPreferencesMigration(),
+        SplitPreferencesMigration(),
+        PlayerPreferenceMigration(),
+        MovePlayerPreferencesMigration(),
+        UseWorkManagerMigration(),
+        RemoveBackgroundJobsMigration(),
+        MigrateTriStateMigration(),
+        DontRunJobsMigration(),
+        RelativeTimestampMigration(),
+        NoAppStateMigration(),
+        PrivatePreferenceMigration(),
+        PermaTrustExtensionsMigration(),
+        LogOutMALMigration(),
+        EnumsMigration(),
+        TrustExtensionRepositoryMigration(),
+    )

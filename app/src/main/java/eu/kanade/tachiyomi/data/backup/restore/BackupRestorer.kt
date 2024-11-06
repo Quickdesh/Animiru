@@ -7,10 +7,12 @@ import eu.kanade.tachiyomi.data.backup.BackupNotifier
 import eu.kanade.tachiyomi.data.backup.models.BackupAnime
 import eu.kanade.tachiyomi.data.backup.models.BackupCategory
 import eu.kanade.tachiyomi.data.backup.models.BackupExtension
+import eu.kanade.tachiyomi.data.backup.models.BackupExtensionRepos
 import eu.kanade.tachiyomi.data.backup.models.BackupPreference
 import eu.kanade.tachiyomi.data.backup.models.BackupSourcePreferences
+import eu.kanade.tachiyomi.data.backup.restore.restorers.AnimeCategoriesRestorer
+import eu.kanade.tachiyomi.data.backup.restore.restorers.AnimeExtensionRepoRestorer
 import eu.kanade.tachiyomi.data.backup.restore.restorers.AnimeRestorer
-import eu.kanade.tachiyomi.data.backup.restore.restorers.CategoriesRestorer
 import eu.kanade.tachiyomi.data.backup.restore.restorers.ExtensionsRestorer
 import eu.kanade.tachiyomi.data.backup.restore.restorers.PreferenceRestorer
 import eu.kanade.tachiyomi.util.system.createFileInCacheDir
@@ -18,9 +20,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
-import tachiyomi.core.i18n.stringResource
+import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.i18n.MR
-import uy.kohesive.injekt.api.get
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -31,8 +32,9 @@ class BackupRestorer(
     private val notifier: BackupNotifier,
     private val isSync: Boolean,
 
-    private val categoriesRestorer: CategoriesRestorer = CategoriesRestorer(),
+    private val animeCategoriesRestorer: AnimeCategoriesRestorer = AnimeCategoriesRestorer(),
     private val preferenceRestorer: PreferenceRestorer = PreferenceRestorer(context),
+    private val animeExtensionRepoRestorer: AnimeExtensionRepoRestorer = AnimeExtensionRepoRestorer(),
     private val animeRestorer: AnimeRestorer = AnimeRestorer(),
     private val extensionsRestorer: ExtensionsRestorer = ExtensionsRestorer(context),
 ) {
@@ -68,14 +70,20 @@ class BackupRestorer(
         val backup = BackupDecoder(context).decode(uri)
 
         // Store source mapping for error messages
-        val backupAnimeMaps = backup.backupAnimeSources + backup.backupBrokenAnimeSources.map { it.toBackupSource() }
+        val backupAnimeMaps = backup.backupAnimeSources
         animeSourceMapping = backupAnimeMaps.associate { it.sourceId to it.name }
 
-        if (options.library) {
-            restoreAmount += backup.backupAnime.size + 1 // +1 for anime categories
+        if (options.libraryEntries) {
+            restoreAmount += backup.backupAnime.size
+        }
+        if (options.categories) {
+            restoreAmount += 1 // +2 for anime categories
         }
         if (options.appSettings) {
             restoreAmount += 1
+        }
+        if (options.extensionRepoSettings) {
+            restoreAmount += backup.backupAnimeExtensionRepo.size
         }
         if (options.sourceSettings) {
             restoreAmount += 1
@@ -85,7 +93,7 @@ class BackupRestorer(
         }
 
         coroutineScope {
-            if (options.library) {
+            if (options.categories) {
                 restoreCategories(
                     backupAnimeCategories = backup.backupAnimeCategories,
                 )
@@ -96,8 +104,11 @@ class BackupRestorer(
             if (options.sourceSettings) {
                 restoreSourcePreferences(backup.backupSourcePreferences)
             }
-            if (options.library) {
-                restoreAnime(backup.backupAnime, backup.backupAnimeCategories)
+            if (options.libraryEntries) {
+                restoreAnime(backup.backupAnime, if (options.categories) backup.backupAnimeCategories else emptyList())
+            }
+            if (options.extensionRepoSettings) {
+                restoreExtensionRepos(backup.backupAnimeExtensionRepo)
             }
             if (options.extensions) {
                 restoreExtensions(backup.backupExtensions)
@@ -111,7 +122,7 @@ class BackupRestorer(
         backupAnimeCategories: List<BackupCategory>,
     ) = launch {
         ensureActive()
-        categoriesRestorer.restoreAnimeCategories(backupAnimeCategories)
+        animeCategoriesRestorer(backupAnimeCategories)
 
         restoreProgress += 1
         notifier.showRestoreProgress(
@@ -134,7 +145,7 @@ class BackupRestorer(
                     // AM (CUSTOM_INFORMATION) -->
                     val customInfo = it.getCustomAnimeInfo()
                     // <-- AM (CUSTOM_INFORMATION)
-                    animeRestorer.restoreAnime(it, backupAnimeCategories, customInfo)
+                    animeRestorer.restore(it, backupAnimeCategories, customInfo)
                 } catch (e: Exception) {
                     val sourceName = animeSourceMapping[it.source] ?: it.source.toString()
                     errors.add(Date() to "${it.title} [$sourceName]: ${e.message}")
@@ -147,7 +158,7 @@ class BackupRestorer(
 
     private fun CoroutineScope.restoreAppPreferences(preferences: List<BackupPreference>) = launch {
         ensureActive()
-        preferenceRestorer.restoreAppPreferences(preferences)
+        preferenceRestorer.restoreApp(preferences)
 
         restoreProgress += 1
         notifier.showRestoreProgress(
@@ -160,7 +171,7 @@ class BackupRestorer(
 
     private fun CoroutineScope.restoreSourcePreferences(preferences: List<BackupSourcePreferences>) = launch {
         ensureActive()
-        preferenceRestorer.restoreSourcePreferences(preferences)
+        preferenceRestorer.restoreSource(preferences)
 
         restoreProgress += 1
         notifier.showRestoreProgress(
@@ -169,6 +180,29 @@ class BackupRestorer(
             restoreAmount,
             isSync,
         )
+    }
+
+    private fun CoroutineScope.restoreExtensionRepos(
+        backupAnimeExtensionRepo: List<BackupExtensionRepos>,
+    ) = launch {
+        backupAnimeExtensionRepo
+            .forEach {
+                ensureActive()
+
+                try {
+                    animeExtensionRepoRestorer(it)
+                } catch (e: Exception) {
+                    errors.add(Date() to "Error Adding Anime Repo: ${it.name} : ${e.message}")
+                }
+
+                restoreProgress += 1
+                notifier.showRestoreProgress(
+                    context.stringResource(MR.strings.extensionRepo_settings),
+                    restoreProgress,
+                    restoreAmount,
+                    isSync,
+                )
+            }
     }
 
     private fun CoroutineScope.restoreExtensions(extensions: List<BackupExtension>) = launch {

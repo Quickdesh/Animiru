@@ -5,7 +5,6 @@ import android.net.Uri
 import android.provider.Settings
 import android.util.DisplayMetrics
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -53,6 +52,7 @@ import eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource
 import eu.kanade.tachiyomi.extension.anime.model.AnimeExtension
 import eu.kanade.tachiyomi.ui.browse.anime.extension.details.AnimeExtensionDetailsScreenModel
 import eu.kanade.tachiyomi.util.system.LocaleHelper
+import eu.kanade.tachiyomi.util.system.copyToClipboard
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import tachiyomi.i18n.MR
@@ -190,7 +190,7 @@ private fun AnimeExtensionDetails(
             key = { it.source.id },
         ) { source ->
             SourceSwitchPreference(
-                modifier = Modifier.animateItemPlacement(),
+                modifier = Modifier.animateItem(),
                 source = source,
                 onClickSourcePreferences = onClickSourcePreferences,
                 onClickSource = onClickSource,
@@ -224,7 +224,31 @@ private fun DetailsHeader(
                     end = MaterialTheme.padding.medium,
                     top = MaterialTheme.padding.medium,
                     bottom = MaterialTheme.padding.small,
-                ),
+                )
+                .clickable {
+                    val extDebugInfo = buildString {
+                        append(
+                            """
+                            Extension name: ${extension.name} (lang: ${extension.lang}; package: ${extension.pkgName})
+                            Extension version: ${extension.versionName} (lib: ${extension.libVersion}; version code: ${extension.versionCode})
+                            NSFW: ${extension.isNsfw}
+                            """.trimIndent(),
+                        )
+
+                        if (extension is AnimeExtension.Installed) {
+                            append("\n\n")
+                            append(
+                                """
+                                Update available: ${extension.hasUpdate}
+                                Obsolete: ${extension.isObsolete}
+                                Shared: ${extension.isShared}
+                                Repository: ${extension.repoUrl}
+                                """.trimIndent(),
+                            )
+                        }
+                    }
+                    context.copyToClipboard("Extension Debug information", extDebugInfo)
+                },
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             AnimeExtensionIcon(
@@ -331,10 +355,8 @@ private fun InfoText(
     primaryTextStyle: TextStyle = MaterialTheme.typography.bodyLarge,
     onClick: (() -> Unit)? = null,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-
     val clickableModifier = if (onClick != null) {
-        Modifier.clickable(interactionSource, indication = null) { onClick() }
+        Modifier.clickable(interactionSource = null, indication = null, onClick = onClick)
     } else {
         Modifier
     }

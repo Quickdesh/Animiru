@@ -18,11 +18,12 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import eu.kanade.core.util.ifAnimeSourcesLoaded
 import eu.kanade.presentation.browse.anime.BrowseAnimeSourceContent
 import eu.kanade.presentation.components.SearchToolbar
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
-import eu.kanade.tachiyomi.core.Constants
+import eu.kanade.tachiyomi.core.common.Constants
 import eu.kanade.tachiyomi.ui.browse.anime.source.browse.BrowseAnimeSourceScreenModel
 import eu.kanade.tachiyomi.ui.browse.anime.source.browse.SourceFilterAnimeDialog
 import eu.kanade.tachiyomi.ui.entries.anime.AnimeScreen
@@ -34,6 +35,7 @@ import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.ExtendedFloatingActionButton
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
+import tachiyomi.presentation.core.screens.LoadingScreen
 import tachiyomi.source.local.entries.anime.LocalAnimeSource
 
 data class AnimeSourceSearchScreen(
@@ -44,6 +46,11 @@ data class AnimeSourceSearchScreen(
 
     @Composable
     override fun Content() {
+        if (!ifAnimeSourcesLoaded()) {
+            LoadingScreen()
+            return
+        }
+
         val uriHandler = LocalUriHandler.current
         val navigator = LocalNavigator.currentOrThrow
         val scope = rememberCoroutineScope()
@@ -76,7 +83,7 @@ data class AnimeSourceSearchScreen(
         ) { paddingValues ->
             val pagingFlow by screenModel.animePagerFlowFlow.collectAsState()
             val openMigrateDialog: (Anime) -> Unit = {
-                screenModel.setDialog(BrowseAnimeSourceScreenModel.Dialog.Migrate(it))
+                screenModel.setDialog(BrowseAnimeSourceScreenModel.Dialog.Migrate(newAnime = it, oldAnime = oldAnime))
             }
             BrowseAnimeSourceContent(
                 source = screenModel.source,

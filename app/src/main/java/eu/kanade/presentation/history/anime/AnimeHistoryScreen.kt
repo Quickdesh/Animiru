@@ -12,6 +12,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import eu.kanade.presentation.components.relativeDateText
 import eu.kanade.presentation.history.anime.components.AnimeHistoryItem
 import eu.kanade.presentation.theme.TachiyomiPreviewTheme
+import eu.kanade.presentation.util.animateItemFastScroll
 import eu.kanade.tachiyomi.ui.history.anime.AnimeHistoryScreenModel
 import tachiyomi.domain.history.anime.model.AnimeHistoryWithRelations
 import tachiyomi.i18n.MR
@@ -20,7 +21,7 @@ import tachiyomi.presentation.core.components.ListGroupHeader
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.screens.EmptyScreen
 import tachiyomi.presentation.core.screens.LoadingScreen
-import java.util.Date
+import java.time.LocalDate
 
 @Composable
 fun AnimeHistoryScreen(
@@ -84,14 +85,14 @@ private fun AnimeHistoryScreenContent(
             when (item) {
                 is AnimeHistoryUiModel.Header -> {
                     ListGroupHeader(
-                        modifier = Modifier.animateItemPlacement(),
+                        modifier = Modifier.animateItemFastScroll(),
                         text = relativeDateText(item.date),
                     )
                 }
                 is AnimeHistoryUiModel.Item -> {
                     val value = item.item
                     AnimeHistoryItem(
-                        modifier = Modifier.animateItemPlacement(),
+                        modifier = Modifier.animateItemFastScroll(),
                         history = value,
                         onClickCover = { onClickCover(value) },
                         onClickResume = { onClickResume(value) },
@@ -104,7 +105,7 @@ private fun AnimeHistoryScreenContent(
 }
 
 sealed interface AnimeHistoryUiModel {
-    data class Header(val date: Date) : AnimeHistoryUiModel
+    data class Header(val date: LocalDate) : AnimeHistoryUiModel
     data class Item(val item: AnimeHistoryWithRelations) : AnimeHistoryUiModel
 }
 

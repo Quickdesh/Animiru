@@ -4,10 +4,7 @@ import android.app.Application
 import eu.kanade.domain.download.anime.interactor.DeleteEpisodeDownload
 import eu.kanade.domain.entries.anime.interactor.SetAnimeViewerFlags
 import eu.kanade.domain.entries.anime.interactor.UpdateAnime
-import eu.kanade.domain.extension.anime.interactor.CreateAnimeExtensionRepo
-import eu.kanade.domain.extension.anime.interactor.DeleteAnimeExtensionRepo
 import eu.kanade.domain.extension.anime.interactor.GetAnimeExtensionLanguages
-import eu.kanade.domain.extension.anime.interactor.GetAnimeExtensionRepos
 import eu.kanade.domain.extension.anime.interactor.GetAnimeExtensionSources
 import eu.kanade.domain.extension.anime.interactor.GetAnimeExtensionsByType
 import eu.kanade.domain.extension.anime.interactor.TrustAnimeExtension
@@ -24,6 +21,17 @@ import eu.kanade.domain.track.anime.interactor.AddAnimeTracks
 import eu.kanade.domain.track.anime.interactor.RefreshAnimeTracks
 import eu.kanade.domain.track.anime.interactor.SyncEpisodeProgressWithTrack
 import eu.kanade.domain.track.anime.interactor.TrackEpisode
+import mihon.data.repository.anime.AnimeExtensionRepoRepositoryImpl
+import mihon.domain.extensionrepo.anime.interactor.CreateAnimeExtensionRepo
+import mihon.domain.extensionrepo.anime.interactor.DeleteAnimeExtensionRepo
+import mihon.domain.extensionrepo.anime.interactor.GetAnimeExtensionRepo
+import mihon.domain.extensionrepo.anime.interactor.GetAnimeExtensionRepoCount
+import mihon.domain.extensionrepo.anime.interactor.ReplaceAnimeExtensionRepo
+import mihon.domain.extensionrepo.anime.interactor.UpdateAnimeExtensionRepo
+import mihon.domain.extensionrepo.anime.repository.AnimeExtensionRepoRepository
+import mihon.domain.extensionrepo.service.ExtensionRepoService
+import mihon.domain.items.episode.interactor.FilterEpisodesForDownload
+import mihon.domain.upcoming.anime.interactor.GetUpcomingAnime
 import tachiyomi.data.category.anime.AnimeCategoryRepositoryImpl
 import tachiyomi.data.entries.anime.AnimeRepositoryImpl
 import tachiyomi.data.entries.anime.CustomAnimeRepositoryImpl
@@ -116,6 +124,7 @@ class DomainModule : InjektModule {
         addFactory { GetAnimeByUrlAndSourceId(get()) }
         addFactory { GetAnime(get()) }
         addFactory { GetNextEpisodes(get(), get(), get()) }
+        addFactory { GetUpcomingAnime(get()) }
         addFactory { ResetAnimeViewerFlags(get()) }
         addFactory { SetAnimeEpisodeFlags(get()) }
         addFactory { AnimeFetchInterval(get()) }
@@ -146,6 +155,7 @@ class DomainModule : InjektModule {
         addFactory { SetSeenStatus(get(), get(), get(), get()) }
         addFactory { ShouldUpdateDbEpisode() }
         addFactory { SyncEpisodesWithSource(get(), get(), get(), get(), get(), get(), get()) }
+        addFactory { FilterEpisodesForDownload(get(), get(), get()) }
 
         addSingletonFactory<AnimeHistoryRepository> { AnimeHistoryRepositoryImpl(get()) }
         addFactory { GetAnimeHistory(get()) }
@@ -173,11 +183,17 @@ class DomainModule : InjektModule {
 
         addFactory { SetMigrateSorting(get()) }
         addFactory { ToggleLanguage(get()) }
-        addFactory { TrustAnimeExtension(get()) }
+        addFactory { TrustAnimeExtension(get(), get()) }
 
-        addFactory { CreateAnimeExtensionRepo(get()) }
+        addFactory { ExtensionRepoService(get(), get()) }
+
+        addSingletonFactory<AnimeExtensionRepoRepository> { AnimeExtensionRepoRepositoryImpl(get()) }
+        addFactory { GetAnimeExtensionRepo(get()) }
+        addFactory { GetAnimeExtensionRepoCount(get()) }
+        addFactory { CreateAnimeExtensionRepo(get(), get()) }
         addFactory { DeleteAnimeExtensionRepo(get()) }
-        addFactory { GetAnimeExtensionRepos(get()) }
+        addFactory { ReplaceAnimeExtensionRepo(get()) }
+        addFactory { UpdateAnimeExtensionRepo(get(), get()) }
 
         // AM (CUSTOM_INFORMATION) -->
         addSingletonFactory<CustomAnimeRepository> { CustomAnimeRepositoryImpl(get<Application>()) }

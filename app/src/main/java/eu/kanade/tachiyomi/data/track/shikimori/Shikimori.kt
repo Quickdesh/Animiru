@@ -8,6 +8,7 @@ import eu.kanade.tachiyomi.data.track.AnimeTracker
 import eu.kanade.tachiyomi.data.track.BaseTracker
 import eu.kanade.tachiyomi.data.track.DeletableAnimeTracker
 import eu.kanade.tachiyomi.data.track.model.AnimeTrackSearch
+import eu.kanade.tachiyomi.data.track.shikimori.dto.SMOAuth
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.serialization.encodeToString
@@ -104,7 +105,7 @@ class Shikimori(id: Long) :
             track.library_id = remoteTrack.library_id
             track.copyPersonalFrom(remoteTrack)
             track.total_episodes = remoteTrack.total_episodes
-        }
+        } ?: throw Exception("Could not find anime")
         return track
     }
 
@@ -116,13 +117,13 @@ class Shikimori(id: Long) :
         return listOf(READING, COMPLETED, ON_HOLD, DROPPED, PLAN_TO_READ, REREADING)
     }
 
-    override fun getStatus(status: Long): StringResource? = when (status) {
-        READING -> MR.strings.reading
-        PLAN_TO_READ -> MR.strings.plan_to_read
+    override fun getStatusForAnime(status: Long): StringResource? = when (status) {
+        READING -> MR.strings.watching
+        PLAN_TO_READ -> MR.strings.plan_to_watch
         COMPLETED -> MR.strings.completed
         ON_HOLD -> MR.strings.on_hold
         DROPPED -> MR.strings.dropped
-        REREADING -> MR.strings.repeating
+        REREADING -> MR.strings.repeating_anime
         else -> null
     }
 
@@ -139,19 +140,19 @@ class Shikimori(id: Long) :
             val oauth = api.accessToken(code)
             interceptor.newAuth(oauth)
             val user = api.getCurrentUser()
-            saveCredentials(user.toString(), oauth.access_token)
+            saveCredentials(user.toString(), oauth.accessToken)
         } catch (e: Throwable) {
             logout()
         }
     }
 
-    fun saveToken(oauth: OAuth?) {
+    fun saveToken(oauth: SMOAuth?) {
         trackPreferences.trackToken(this).set(json.encodeToString(oauth))
     }
 
-    fun restoreToken(): OAuth? {
+    fun restoreToken(): SMOAuth? {
         return try {
-            json.decodeFromString<OAuth>(trackPreferences.trackToken(this).get())
+            json.decodeFromString<SMOAuth>(trackPreferences.trackToken(this).get())
         } catch (e: Exception) {
             null
         }

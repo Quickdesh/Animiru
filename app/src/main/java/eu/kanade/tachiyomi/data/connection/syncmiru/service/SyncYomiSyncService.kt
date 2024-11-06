@@ -4,7 +4,6 @@ package eu.kanade.tachiyomi.data.connection.syncmiru.service
 import android.content.Context
 import eu.kanade.domain.connection.SyncPreferences
 import eu.kanade.tachiyomi.data.backup.models.Backup
-import eu.kanade.tachiyomi.data.backup.models.BackupSerializer
 import eu.kanade.tachiyomi.data.connection.syncmiru.SyncNotifier
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.PUT
@@ -19,7 +18,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.apache.http.HttpStatus
-import tachiyomi.core.i18n.stringResource
+import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.i18n.MR
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -103,7 +102,7 @@ class SyncYomiSyncService(
             }
 
             return try {
-                val backup = protoBuf.decodeFromByteArray(BackupSerializer, byteArray)
+                val backup = protoBuf.decodeFromByteArray(Backup.serializer(), byteArray)
                 return Pair(SyncData(backup = backup), newETag)
             } catch (_: SerializationException) {
                 logcat(LogPriority.INFO) {
@@ -145,7 +144,7 @@ class SyncYomiSyncService(
             .writeTimeout(timeout, TimeUnit.SECONDS)
             .build()
 
-        val byteArray = protoBuf.encodeToByteArray(BackupSerializer, backup)
+        val byteArray = protoBuf.encodeToByteArray(Backup.serializer(), backup)
         if (byteArray.isEmpty()) {
             throw IllegalStateException(context.stringResource(MR.strings.empty_backup_error))
         }

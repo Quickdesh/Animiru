@@ -24,6 +24,7 @@ import eu.kanade.tachiyomi.network.ProgressListener
 import eu.kanade.tachiyomi.util.size
 import eu.kanade.tachiyomi.util.storage.DiskUtil
 import eu.kanade.tachiyomi.util.storage.toFFmpegString
+import eu.kanade.tachiyomi.util.system.copyToClipboard
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -48,10 +49,10 @@ import okhttp3.Response
 import okio.Throttler
 import okio.buffer
 import okio.sink
-import tachiyomi.core.i18n.stringResource
-import tachiyomi.core.storage.extension
-import tachiyomi.core.util.lang.launchIO
-import tachiyomi.core.util.system.logcat
+import tachiyomi.core.common.i18n.stringResource
+import tachiyomi.core.common.storage.extension
+import tachiyomi.core.common.util.lang.launchIO
+import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.download.service.DownloadPreferences
 import tachiyomi.domain.entries.anime.model.Anime
 import tachiyomi.domain.items.episode.model.Episode
@@ -192,7 +193,7 @@ class AnimeDownloader(
     fun clearQueue() {
         cancelDownloaderJob()
 
-        _clearQueue()
+        internalClearQueue()
         notifier.dismissProgress()
     }
 
@@ -382,7 +383,7 @@ class AnimeDownloader(
             ensureSuccessfulAnimeDownload(download, animeDir, tmpDir, episodeDirname)
         } catch (e: Exception) {
             download.status = AnimeDownload.State.ERROR
-            notifier.onError(e.message, download.episode.name, download.anime.title)
+            notifier.onError(e.message, download.episode.name, download.anime.title, download.anime.id)
         } finally {
             notifier.dismissProgress()
         }
@@ -495,7 +496,12 @@ class AnimeDownloader(
                         httpDownload(download, tmpDir, filename, newThreads, safe)
                     }
                 } catch (e: Exception) {
-                    notifier.onError(e.message + ", retrying..", download.episode.name, download.anime.title)
+                    notifier.onError(
+                        e.message + ", retrying..",
+                        download.episode.name,
+                        download.anime.title,
+                        download.anime.id,
+                    )
                     delay(2 * 1000L)
                     null
                 }
@@ -515,7 +521,7 @@ class AnimeDownloader(
                     httpDownload(download, tmpDir, filename, 1, true)
                 }
             } catch (e: Exception) {
-                notifier.onError(e.message, download.episode.name, download.anime.title)
+                notifier.onError(e.message, download.episode.name, download.anime.title, download.anime.id)
                 throw e
             }
         } else {
@@ -954,7 +960,7 @@ class AnimeDownloader(
         while (i < sortedParts.size - 1) {
             val part = sortedParts[i]
             result.add(part)
-            if (part.completed && !sortedParts[i+1].completed) {
+            if (part.completed && !sortedParts[i + 1].completed) {
                 part.completed = false // not completed anymore
                 part.range = sortedParts[i].range.copy(second = sortedParts[i + 1].range.second) // extends range
                 part.request = sortedParts[i + 1].request // Assumes that not completed parts have at least a Request
@@ -1164,7 +1170,8 @@ class AnimeDownloader(
         filename: String,
     ): UniFile {
         try {
-            val file = tmpDir.createFile("$filename.mp4")!!
+            val file = tmpDir.createFile("${filename}_tmp.mp4")!!
+            context.copyToClipboard("Episode download location", tmpDir.filePath!!.substringBeforeLast("_tmp"))
 
             // TODO: support other file formats!!
             // start download with intent
@@ -1237,7 +1244,7 @@ class AnimeDownloader(
             context.startActivity(intent)
             return file
         } catch (e: Exception) {
-            tmpDir.findFile("$filename.mp4")?.delete()
+            tmpDir.findFile("${filename}_tmp.mp4")?.delete()
             throw e
         }
     }
@@ -1250,7 +1257,7 @@ class AnimeDownloader(
      * @param tmpDir the directory where the download is currently stored.
      * @param dirname the real (non temporary) directory name of the download.
      */
-    private fun ensureSuccessfulAnimeDownload(
+    private suspend fun ensureSuccessfulAnimeDownload(
         download: AnimeDownload,
         animeDir: UniFile,
         tmpDir: UniFile,
@@ -1261,6 +1268,8 @@ class AnimeDownloader(
 
         download.status = if (downloadedVideo.size == 1) {
             // Only rename the directory if it's downloaded
+            val filename = DiskUtil.buildValidFilename("${download.anime.title} - ${download.episode.name}")
+            tmpDir.findFile("${filename}_tmp.mp4")?.delete()
             tmpDir.renameTo(dirname)
 
             cache.addEpisode(dirname, animeDir, download.anime)
@@ -1323,7 +1332,7 @@ class AnimeDownloader(
         removeFromQueueIf { it.anime.id == anime.id }
     }
 
-    private fun _clearQueue() {
+    private fun internalClearQueue() {
         _queueState.update {
             it.forEach { download ->
                 if (download.status == AnimeDownload.State.DOWNLOADING ||
@@ -1349,7 +1358,7 @@ class AnimeDownloader(
         val wasRunning = isRunning
 
         pause()
-        _clearQueue()
+        internalClearQueue()
         addAllToQueue(downloads)
 
         if (wasRunning) {

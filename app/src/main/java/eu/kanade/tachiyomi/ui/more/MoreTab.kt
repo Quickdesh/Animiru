@@ -36,13 +36,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
-import tachiyomi.core.util.lang.launchIO
+import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
-object MoreTab : Tab() {
+data object MoreTab : Tab {
 
     override val options: TabOptions
         @Composable
@@ -110,10 +110,10 @@ private class MoreScreenModel(
     var downloadedOnly by preferences.downloadedOnly().asState(screenModelScope)
     var incognitoMode by preferences.incognitoMode().asState(screenModelScope)
 
-    private var _state: MutableStateFlow<DownloadQueueState> = MutableStateFlow(
+    private var _downloadQueueState: MutableStateFlow<DownloadQueueState> = MutableStateFlow(
         DownloadQueueState.Stopped,
     )
-    val downloadQueueState: StateFlow<DownloadQueueState> = _state.asStateFlow()
+    val downloadQueueState: StateFlow<DownloadQueueState> = _downloadQueueState.asStateFlow()
 
     init {
         // Handle running/paused status change and queue progress updating
@@ -125,7 +125,7 @@ private class MoreScreenModel(
                 Pair(isRunningAnime, animeDownloadQueue.size)
             }.collectLatest { (isDownloadingAnime, animeDownloadQueueSize) ->
                 val pendingDownloadExists = animeDownloadQueueSize != 0
-                _state.value = when {
+                _downloadQueueState.value = when {
                     !pendingDownloadExists -> DownloadQueueState.Stopped
                     !isDownloadingAnime -> DownloadQueueState.Paused(animeDownloadQueueSize)
                     else -> DownloadQueueState.Downloading(animeDownloadQueueSize)

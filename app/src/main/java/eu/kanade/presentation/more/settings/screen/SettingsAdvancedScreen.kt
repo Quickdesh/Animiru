@@ -57,9 +57,9 @@ import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.launch
 import logcat.LogPriority
 import okhttp3.Headers
-import tachiyomi.core.util.lang.launchNonCancellable
-import tachiyomi.core.util.lang.withUIContext
-import tachiyomi.core.util.system.logcat
+import tachiyomi.core.common.util.lang.launchNonCancellable
+import tachiyomi.core.common.util.lang.withUIContext
+import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.entries.anime.interactor.ResetAnimeViewerFlags
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
@@ -84,14 +84,6 @@ object SettingsAdvancedScreen : SearchableSettings {
         val networkPreferences = remember { Injekt.get<NetworkPreferences>() }
 
         return listOf(
-            // AM (REMOVE_ACRA_FIREBASE) -->
-            // Preference.PreferenceItem.SwitchPreference(
-            //     pref = basePreferences.acraEnabled(),
-            //     title = stringResource(MR.strings.pref_enable_acra),
-            //     subtitle = stringResource(MR.strings.pref_acra_summary),
-            //     enabled = isPreviewBuildType || isReleaseBuildType,
-            // ),
-            // <-- AM (REMOVE_ACRA_FIREBASE)
             Preference.PreferenceItem.TextPreference(
                 title = stringResource(MR.strings.pref_dump_crash_logs),
                 subtitle = stringResource(MR.strings.pref_dump_crash_logs_summary),
@@ -270,6 +262,7 @@ object SettingsAdvancedScreen : SearchableSettings {
                         try {
                             // OkHttp checks for valid values internally
                             Headers.Builder().add("User-Agent", it)
+                            context.toast(MR.strings.requires_app_restart)
                         } catch (_: IllegalArgumentException) {
                             context.toast(MR.strings.error_user_agent_string_invalid)
                             return@EditTextPreference false

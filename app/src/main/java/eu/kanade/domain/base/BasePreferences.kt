@@ -3,8 +3,8 @@ package eu.kanade.domain.base
 import android.content.Context
 import android.content.pm.PackageManager
 import dev.icerock.moko.resources.StringResource
-import tachiyomi.core.preference.Preference
-import tachiyomi.core.preference.PreferenceStore
+import tachiyomi.core.common.preference.Preference
+import tachiyomi.core.common.preference.PreferenceStore
 import tachiyomi.i18n.MR
 
 class BasePreferences(
@@ -20,13 +20,6 @@ class BasePreferences(
     fun incognitoMode() = preferenceStore.getBoolean(Preference.appStateKey("incognito_mode"), false)
 
     fun extensionInstaller() = ExtensionInstallerPreference(context, preferenceStore)
-
-    // AM (REMOVE_ACRA_FIREBASE) -->
-    // fun acraEnabled() = preferenceStore.getBoolean(
-    //    "acra.enable",
-    //     isPreviewBuildType || isReleaseBuildType,
-    // )
-    // <-- AM (REMOVE_ACRA_FIREBASE)
 
     fun deviceHasPip() = context.packageManager.hasSystemFeature(
         PackageManager.FEATURE_PICTURE_IN_PICTURE,

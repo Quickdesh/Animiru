@@ -37,8 +37,8 @@ import eu.kanade.presentation.components.TabbedDialog
 import eu.kanade.presentation.components.TabbedDialogPaddings
 import eu.kanade.tachiyomi.ui.player.settings.PlayerSettingsScreenModel
 import kotlinx.collections.immutable.persistentListOf
-import tachiyomi.core.storage.UniFileTempFileManager
-import tachiyomi.core.storage.extension
+import tachiyomi.core.common.storage.UniFileTempFileManager
+import tachiyomi.core.common.storage.extension
 import tachiyomi.domain.storage.service.StorageManager
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.padding
@@ -54,11 +54,11 @@ fun SubtitleSettingsSheet(
     TabbedDialog(
         onDismissRequest = onDismissRequest,
         tabTitles = persistentListOf(
+            stringResource(MR.strings.player_subtitle_settings_filters),
             stringResource(MR.strings.player_subtitle_settings_delay_tab),
             stringResource(MR.strings.player_subtitle_settings_font_tab),
             stringResource(MR.strings.player_subtitle_settings_color_tab),
         ),
-        hideSystemBars = true,
     ) { page ->
         Column(
             modifier = Modifier
@@ -66,9 +66,10 @@ fun SubtitleSettingsSheet(
                 .verticalScroll(rememberScrollState()),
         ) {
             when (page) {
-                0 -> StreamsDelayPage(screenModel)
-                1 -> SubtitleFontPage(screenModel)
-                2 -> SubtitleColorPage(screenModel)
+                0 -> FiltersPage(screenModel)
+                1 -> StreamsDelayPage(screenModel)
+                2 -> SubtitleFontPage(screenModel)
+                3 -> SubtitleColorPage(screenModel)
             }
         }
     }

@@ -10,8 +10,8 @@ import eu.kanade.tachiyomi.util.system.createFileInCacheDir
 import eu.kanade.tachiyomi.util.system.toShareIntent
 import eu.kanade.tachiyomi.util.system.toast
 import `is`.xyz.mpv.Utils
-import tachiyomi.core.util.lang.withNonCancellableContext
-import tachiyomi.core.util.lang.withUIContext
+import tachiyomi.core.common.util.lang.withNonCancellableContext
+import tachiyomi.core.common.util.lang.withUIContext
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
@@ -20,12 +20,13 @@ class CrashLogUtil(
     private val animeExtensionManager: AnimeExtensionManager = Injekt.get(),
 ) {
 
-    suspend fun dumpLogs() = withNonCancellableContext {
+    suspend fun dumpLogs(exception: Throwable? = null) = withNonCancellableContext {
         try {
             val file = context.createFileInCacheDir("animiru_crash_logs.txt")
 
             file.appendText(getDebugInfo() + "\n\n")
             getAnimeExtensionsInfo()?.let { file.appendText("$it\n\n") }
+            exception?.let { file.appendText("$it\n\n") }
 
             Runtime.getRuntime().exec("logcat *:E -d -f ${file.absolutePath}").waitFor()
 

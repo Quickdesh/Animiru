@@ -1,9 +1,9 @@
 package tachiyomi.domain.library.service
 
-import tachiyomi.core.preference.Preference
-import tachiyomi.core.preference.PreferenceStore
-import tachiyomi.core.preference.TriState
-import tachiyomi.core.preference.getEnum
+import tachiyomi.core.common.preference.Preference
+import tachiyomi.core.common.preference.PreferenceStore
+import tachiyomi.core.common.preference.TriState
+import tachiyomi.core.common.preference.getEnum
 import tachiyomi.domain.entries.anime.model.Anime
 import tachiyomi.domain.library.anime.model.AnimeLibrarySort
 import tachiyomi.domain.library.model.AnimeLibraryGroup
@@ -79,6 +79,12 @@ class LibraryPreferences(
     fun newShowUpdatesCount() = preferenceStore.getBoolean("library_show_updates_count", true)
 
     // Common Cache
+
+    fun autoClearItemCache() = preferenceStore.getBoolean("auto_clear_chapter_cache", false)
+
+    // Random Sort Seed
+
+    fun randomAnimeSortSeed() = preferenceStore.getInt("library_random_anime_sort_seed", 0)
 
     // Mixture Columns
 

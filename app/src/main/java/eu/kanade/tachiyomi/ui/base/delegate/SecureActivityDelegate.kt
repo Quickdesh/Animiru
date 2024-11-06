@@ -1,6 +1,8 @@
 package eu.kanade.tachiyomi.ui.base.delegate
 
+import android.app.Activity
 import android.content.Intent
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -95,7 +97,8 @@ class SecureActivityDelegateImpl : SecureActivityDelegate, DefaultLifecycleObser
         val incognitoModeFlow = preferences.incognitoMode().changes()
         combine(secureScreenFlow, incognitoModeFlow) { secureScreen, incognitoMode ->
             secureScreen == SecurityPreferences.SecureScreenMode.ALWAYS ||
-                secureScreen == SecurityPreferences.SecureScreenMode.INCOGNITO && incognitoMode
+                secureScreen == SecurityPreferences.SecureScreenMode.INCOGNITO &&
+                incognitoMode
         }
             .onEach(activity.window::setSecureScreen)
             .launchIn(activity.lifecycleScope)
@@ -106,7 +109,12 @@ class SecureActivityDelegateImpl : SecureActivityDelegate, DefaultLifecycleObser
         if (activity.isAuthenticationSupported()) {
             if (!SecureActivityDelegate.requireUnlock) return
             activity.startActivity(Intent(activity, UnlockActivity::class.java))
-            activity.overridePendingTransition(0, 0)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                activity.overrideActivityTransition(Activity.OVERRIDE_TRANSITION_OPEN, 0, 0)
+            } else {
+                @Suppress("DEPRECATION")
+                activity.overridePendingTransition(0, 0)
+            }
         } else {
             securityPreferences.useAuthenticator().set(false)
         }

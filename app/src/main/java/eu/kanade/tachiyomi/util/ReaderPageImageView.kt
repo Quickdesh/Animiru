@@ -16,9 +16,11 @@ import androidx.annotation.StyleRes
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.core.os.postDelayed
 import androidx.core.view.isVisible
-import coil.imageLoader
-import coil.request.CachePolicy
-import coil.request.ImageRequest
+import coil3.asDrawable
+import coil3.imageLoader
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.davemorrissey.labs.subscaleview.ImageSource
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView.EASE_IN_OUT_QUAD
@@ -217,7 +219,8 @@ open class ReaderPageImageView @JvmOverloads constructor(
             .diskCachePolicy(CachePolicy.DISABLED)
             .target(
                 onSuccess = { result ->
-                    setImageDrawable(result)
+                    val drawable = result.asDrawable(context.resources)
+                    setImageDrawable(drawable)
                     (result as? Animatable)?.start()
                     isVisible = true
                     this@ReaderPageImageView.onImageLoaded()
@@ -244,7 +247,9 @@ open class ReaderPageImageView @JvmOverloads constructor(
     )
 
     enum class ZoomStartPosition {
-        LEFT, CENTER, RIGHT
+        LEFT,
+        CENTER,
+        RIGHT,
     }
 }
 

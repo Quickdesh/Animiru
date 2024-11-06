@@ -58,7 +58,7 @@ import eu.kanade.tachiyomi.ui.download.anime.AnimeDownloadAdapter
 import eu.kanade.tachiyomi.ui.download.anime.AnimeDownloadHeaderItem
 import eu.kanade.tachiyomi.ui.download.anime.AnimeDownloadQueueScreenModel
 import kotlinx.collections.immutable.persistentListOf
-import tachiyomi.core.util.lang.launchUI
+import tachiyomi.core.common.util.lang.launchUI
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.Pill
 import tachiyomi.presentation.core.components.material.Scaffold

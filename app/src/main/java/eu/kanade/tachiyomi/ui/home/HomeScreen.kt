@@ -22,6 +22,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.TabNavigator
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.util.Screen
+import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.ui.browse.BrowseTab
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
 import eu.kanade.tachiyomi.ui.entries.anime.AnimeScreen
@@ -42,8 +43,8 @@ object HomeScreen : Screen() {
     private val openTabEvent = Channel<Tab>()
     private val showBottomNavEvent = Channel<Boolean>()
 
-    private const val TabFadeDuration = 300
-    private const val TabNavigatorKey = "HomeTabs"
+    private const val TAB_FADE_DURATION = 300
+    private const val TAB_NAVIGATOR_KEY = "HomeTabs"
 
     private val uiPreferences: UiPreferences by injectLazy()
     private val defaultTab = uiPreferences.startScreen().get().tab
@@ -51,10 +52,10 @@ object HomeScreen : Screen() {
     private val tabs = listOf(
         AnimeLibraryTab,
         // AM (RECENTS) -->
-        RecentsTab(toHistory = false),
+        RecentsTab,
         // <-- AM (RECENTS)
         // AM (BROWSE) -->
-        BrowseTab,
+        BrowseTab(),
         // <-- AM (BROWSE)
         MoreTab,
     )
@@ -64,7 +65,7 @@ object HomeScreen : Screen() {
         val navigator = LocalNavigator.currentOrThrow
         TabNavigator(
             tab = defaultTab,
-            key = TabNavigatorKey,
+            key = TAB_NAVIGATOR_KEY,
         ) { tabNavigator ->
             // AM (NAVIGATION_PILL) -->
             // Provide usable navigator to content screen
@@ -93,7 +94,7 @@ object HomeScreen : Screen() {
                                 tabs = tabs,
                                 currentTabIndex,
                                 setCurrentTabIndex,
-                                labelFade = TabFadeDuration / 2,
+                                labelFade = TAB_FADE_DURATION / 2,
                             )
                         }
                     },
@@ -109,9 +110,9 @@ object HomeScreen : Screen() {
                             targetState = tabNavigator.current,
                             transitionSpec = {
                                 materialSharedAxisX(
-                                    forward = !isForward,
+                                    forward = isForward,
                                     slideDistance = 500,
-                                    durationMillis = TabFadeDuration,
+                                    durationMillis = TAB_FADE_DURATION,
                                 )
                             },
                             label = "tabContent",
@@ -152,10 +153,15 @@ object HomeScreen : Screen() {
                         tabNavigator.current = when (it) {
                             is Tab.AnimeLib -> AnimeLibraryTab
                             // AM (RECENTS) -->
-                            is Tab.Recents -> RecentsTab(it.toHistory)
+                            is Tab.Recents -> {
+                                if (it.toHistory) {
+                                    RecentsTab.showHistory()
+                                }
+                                RecentsTab
+                            }
                             // <-- AM (RECENTS)
                             // AM (BROWSE) -->
-                            is Tab.Browse -> BrowseTab
+                            is Tab.Browse -> BrowseTab()
                             // <-- AM (BROWSE)
                             is Tab.More -> MoreTab
                         }

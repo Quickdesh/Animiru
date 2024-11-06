@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
@@ -30,7 +31,6 @@ import androidx.compose.ui.util.fastForEachIndexed
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.launch
 import tachiyomi.i18n.MR
-import tachiyomi.presentation.core.components.HorizontalPager
 import tachiyomi.presentation.core.components.material.TabText
 import tachiyomi.presentation.core.i18n.stringResource
 
@@ -47,12 +47,10 @@ fun TabbedDialog(
     tabOverflowMenuContent: (@Composable ColumnScope.(() -> Unit) -> Unit)? = null,
     onOverflowMenuClicked: (() -> Unit)? = null,
     overflowIcon: ImageVector? = null,
-    hideSystemBars: Boolean = false,
     pagerState: PagerState = rememberPagerState { tabTitles.size },
     content: @Composable (Int) -> Unit,
 ) {
     AdaptiveSheet(
-        hideSystemBars = hideSystemBars,
         modifier = modifier,
         onDismissRequest = onDismissRequest,
     ) {
@@ -63,6 +61,7 @@ fun TabbedDialog(
                 PrimaryTabRow(
                     modifier = Modifier.weight(1f),
                     selectedTabIndex = pagerState.currentPage,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     divider = {},
                 ) {
                     tabTitles.fastForEachIndexed { index, tab ->
@@ -83,9 +82,8 @@ fun TabbedDialog(
                 modifier = Modifier.animateContentSize(),
                 state = pagerState,
                 verticalAlignment = Alignment.Top,
-            ) { page ->
-                content(page)
-            }
+                pageContent = { page -> content(page) },
+            )
         }
     }
 }

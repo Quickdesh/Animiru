@@ -159,25 +159,25 @@ data class PlayerData(
 
 // Enum class for standard Rich Presence in-app screens
 enum class DiscordScreen(val text: StringResource, val details: StringResource, val imageUrl: String) {
-    APP(MR.strings.app_name, MR.strings.browsing, animiruImageUrl),
-    LIBRARY(MR.strings.label_library, MR.strings.browsing, libraryImageUrl),
-    UPDATES(MR.strings.label_recent_updates, MR.strings.scrolling, updatesImageUrl),
-    HISTORY(MR.strings.label_recent_manga, MR.strings.scrolling, historyImageUrl),
-    RECENTS(MR.strings.label_recent_recents, MR.strings.scrolling, recentsImageUrl),
-    BROWSE(MR.strings.label_sources, MR.strings.browsing, browseImageUrl),
-    MORE(MR.strings.label_settings, MR.strings.messing, moreImageUrl),
-    WEBVIEW(MR.strings.action_web_view, MR.strings.browsing, webviewImageUrl),
-    VIDEO(MR.strings.video, MR.strings.watching, videoImageUrl),
+    APP(MR.strings.app_name, MR.strings.browsing, ANIMIRU_IMAGE_URL),
+    LIBRARY(MR.strings.label_library, MR.strings.browsing, LIBRARY_IMAGE_URL),
+    UPDATES(MR.strings.label_recent_updates, MR.strings.scrolling, UPDATES_IMAGE_URL),
+    HISTORY(MR.strings.label_recent_manga, MR.strings.scrolling, HISTORY_IMAGE_URL),
+    RECENTS(MR.strings.label_recent_recents, MR.strings.scrolling, RECENTS_IMAGE_URL),
+    BROWSE(MR.strings.label_sources, MR.strings.browsing, BROWSE_IMAGE_URL),
+    MORE(MR.strings.label_settings, MR.strings.messing, MORE_IMAGE_URL),
+    WEBVIEW(MR.strings.action_web_view, MR.strings.browsing, WEBVIEW_IMAGE_URL),
+    VIDEO(MR.strings.video, MR.strings.watching, VIDEO_IMAGE_URL),
 }
 
 // Constants for standard Rich Presence image urls
-private const val animiruImageUrl = "emojis/1247521756898398269.webp?quality=lossless"
-private const val libraryImageUrl = "emojis/1247521758966317158.webp?quality=lossless"
-private const val updatesImageUrl = "emojis/1247521763571794030.webp?quality=lossless"
-private const val historyImageUrl = "emojis/1247521754264506378.webp?quality=lossless"
-private const val recentsImageUrl = "emojis/1247787737705353291.webp?quality=lossless"
-private const val browseImageUrl = "emojis/1247521751575826493.webp?quality=lossless"
-private const val moreImageUrl = "emojis/1247521761025851472.webp?quality=lossless"
-private const val webviewImageUrl = "emojis/1247521768533524573.webp?quality=lossless"
-private const val videoImageUrl = "emojis/1247521765857693698.webp?quality=lossless"
+private const val ANIMIRU_IMAGE_URL = "emojis/1247521756898398269.webp?quality=lossless"
+private const val LIBRARY_IMAGE_URL = "emojis/1247521758966317158.webp?quality=lossless"
+private const val UPDATES_IMAGE_URL = "emojis/1247521763571794030.webp?quality=lossless"
+private const val HISTORY_IMAGE_URL = "emojis/1247521754264506378.webp?quality=lossless"
+private const val RECENTS_IMAGE_URL = "emojis/1247787737705353291.webp?quality=lossless"
+private const val BROWSE_IMAGE_URL = "emojis/1247521751575826493.webp?quality=lossless"
+private const val MORE_IMAGE_URL = "emojis/1247521761025851472.webp?quality=lossless"
+private const val WEBVIEW_IMAGE_URL = "emojis/1247521768533524573.webp?quality=lossless"
+private const val VIDEO_IMAGE_URL = "emojis/1247521765857693698.webp?quality=lossless"
 // <-- AM (DISCORD_RPC)

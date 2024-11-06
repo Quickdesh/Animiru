@@ -8,7 +8,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,11 +31,11 @@ import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Input
 import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.RemoveDone
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -98,7 +97,7 @@ fun EntryBottomActionMenu(
                 bottomEnd = ZeroCornerSize,
                 bottomStart = ZeroCornerSize,
             ),
-            tonalElevation = 3.dp,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
         ) {
             val haptic = LocalHapticFeedback.current
             // AM (FILLERMARK) -->
@@ -263,8 +262,8 @@ private fun RowScope.Button(
             .size(48.dp)
             .weight(animatedWeight)
             .combinedClickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = rememberRipple(bounded = false),
+                interactionSource = null,
+                indication = ripple(bounded = false),
                 onLongClick = onLongClick,
                 onClick = onClick,
             ),
@@ -314,7 +313,7 @@ fun LibraryBottomActionMenu(
                 bottomEnd = ZeroCornerSize,
                 bottomStart = ZeroCornerSize,
             ),
-            tonalElevation = 3.dp,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
         ) {
             val haptic = LocalHapticFeedback.current
             val confirm = remember { mutableStateListOf(false, false, false, false, false) }
